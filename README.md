@@ -9,6 +9,7 @@
 	- [Snapdragon™ Game Super Resolution 1](#snapdragon-game-super-resolution-1)
 	- [Snapdragon™ Game Super Resolution 2](#snapdragon-game-super-resolution-2)
 	- [Qualcomm™ NPE Plugin](#qualcomm-npe-plugin)
+	- [Qualcomm™ Shadow Denoiser Plugin](#qualcomm-shadow-denoiser-plugin)
 - [License](#license)
 
 # Introduction
@@ -78,6 +79,18 @@ Plugin for Neural Network Inference using the Qualcomm™ Neural Processing SDK 
 
 This plugin enables hardware acceleration of AI model inference on devices with Qualcomm® Hexagon™ Processors.
 
+## Qualcomm™ Shadow Denoiser 
+
+*Available Engine Versions:*
+| [5.5](https://github.com/quic/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.5/Plugins/QcomShadowDenoiser) |
+|------|
+
+Plugin for reducing noise in ray-traced shadows on both desktop and mobile renderers, with optimizations for Qualcomm® Adreno™ GPUs.
+
 # License
 
-Snapdragon™ Game Super Resolution is licensed under the BSD 3-clause “New” or “Revised” License. Check out the [LICENSE](LICENSE) for more details.
+Snapdragon™ Game Super Resolution is licensed under the BSD 3-clause “New” or “Revised” License.
+
+Qualcomm™ Shadow Denoiser is licensed under the BSD 3-clause “New” or “Revised” License.
+
+Check out the [LICENSE](LICENSE) for more details.

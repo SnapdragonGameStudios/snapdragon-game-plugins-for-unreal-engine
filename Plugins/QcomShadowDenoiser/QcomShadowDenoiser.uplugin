@@ -1,0 +1,31 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "QcomShadowDenoiser",
+	"Description": "ShadowDenoiser",
+	"Category": "Other",
+	"CreatedBy": "Qualcomm Innovation Center, Inc.  Snapdragon Game Studios",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"EngineVersion": "5.5.0",
+	"CanContainContent": true,
+	"Installed": true,
+	"EnabledByDefault": true,
+	"Modules": [
+		{
+			"Name": "QcomShadowDenoiser",
+			"Type": "Runtime",
+			"LoadingPhase": "PostConfigInit",
+			"PlatformAllowList": [
+				"Win64",
+				"Android"
+			],
+			"SupportedTargetPlatforms": [
+				"Android"
+			]
+		}
+	]
+}

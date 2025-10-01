@@ -1,0 +1,56 @@
+//============================================================================================================
+//
+//
+//                  Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+//                              SPDX-License-Identifier: BSD-3-Clause
+//
+//============================================================================================================
+
+#include "/Engine/Public/Platform.ush"
+#include "/Engine/Private/SceneTexturesCommon.ush"
+
+// Shader parameters
+#include "/Engine/Private/Common.ush"
+#include "/Engine/Private/SceneTextureParameters.ush"
+// Include the platform specific types
+#include "QcomShadowDenoiserTypes.ush"
+
+Texture2D<float16_t2>	InputHorizontallyFiltered;
+Texture2D<int>			InputTileClassificationTexture;
+RWTexture2D<float16_t2>	Output;
+
+// Defines required by implementation header
+#define INPUT_HORIZONTALLYFILTERED_BUFFER InputHorizontallyFiltered
+
+// Include the platform agnostic implementation
+#include "/ThirdParty/QcomShadowDenoiser/Shared/QcomShadowDenoiserFixedFilterVert.h"
+
+
+[numthreads(8, 8, 1)]
+void FilterCS(uint3 DispatchThreadId : SV_DispatchThreadID, uint3 GroupId : SV_GroupID)
+{
+    // 2 pixels (2x1) output per thread
+	uint16_t2 ScreenLoc = DispatchThreadId.xy * uint16_t2(2,1);
+	uint16_t2 BlockLoc = uint16_t2(ScreenLoc.x >> 3, ScreenLoc.y >> 3);
+
+	float16_t2 Filtered = 0;
+	
+	// If this screen pixel's block is fully shadowed or fully lit (which accounts for the maximum filter width) then bypass this filter
+	int BlockData = InputTileClassificationTexture.Load(uint3(BlockLoc, 0));
+	if (BlockData != 0)
+	{
+		Filtered = BlockData<0 ? float16_t2(0.0,0.0) : float16_t2(1.0,1.0);
+	}
+	else
+	{
+		// Do the local neighborhood filter (vertically filter the horizontally filtered neighborhood to get the final neighborbood) - result is a 17x17 filter
+		float2 InputSize;
+		InputHorizontallyFiltered.GetDimensions( InputSize.x, InputSize.y );
+		float2 ScreenCoord = float2(ScreenLoc) / InputSize;
+
+		Filtered = FilterVertical2(ScreenCoord);
+	}
+
+	Output[ScreenLoc] = Filtered[0];
+	Output[ScreenLoc + uint16_t2(1,0)] = Filtered[1];
+}

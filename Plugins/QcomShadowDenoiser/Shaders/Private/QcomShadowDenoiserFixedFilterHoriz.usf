@@ -1,0 +1,52 @@
+//============================================================================================================
+//
+//
+//                  Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+//                              SPDX-License-Identifier: BSD-3-Clause
+//
+//============================================================================================================
+
+#include "/Engine/Public/Platform.ush"
+#include "/Engine/Private/SceneTexturesCommon.ush"
+// Include the platform specific types
+#include "QcomShadowDenoiserTypes.ush"
+
+// Shader parameters
+#include "/Engine/Private/Common.ush"
+#include "/Engine/Private/SceneTextureParameters.ush"
+Texture2D<uint2>		InputShadowBitBuffer;
+Texture2D<int>			InputTileClassificationTexture;
+Texture2D<half>			InputFixedFilterLookup;			//#TODO_xuc: es3 doesn't support float16_t
+RWTexture2D<half>		Output;							//#TODO_xuc: es3 doesn't support float16_t
+
+// Defines required by implementation header
+#define INPUT_SHADOWMASK_BUFFER		InputShadowBitBuffer
+#define INPUT_FILTERLOOKUP_BUFFER	InputFixedFilterLookup
+
+// Include the platform agnostic implementation
+#include "/ThirdParty/QcomShadowDenoiser/Shared/QcomShadowDenoiserFixedFilterHoriz.h"
+
+
+// Run the horizontal filter for the given ScreenLoc (and for ScreenLoc + (0,4), ie 4 pixels below
+// because the InputShadowBitBuffer covers an 8x8 block, top 8x4 in x, bottom 8x4 in y).
+[numthreads(8, 4, 1)]
+void FilterCS(uint3 GroupThreadId : SV_GroupThreadID, uint3 GroupId : SV_GroupID)
+{
+	uint2 ScreenLoc = GroupThreadId.xy + GroupId.xy * uint2(8,8);
+	uint2 BlockLoc = GroupId.xy;
+
+	float16_t2 Filtered = float16_t2(0.0,0.0);
+	
+	// If this screen pixel's block is fully shadowed or fully lit (which accounts for the maximum filter width) then bypass this filter
+//	int BlockData = InputTileClassificationTexture.Load(uint3(BlockLoc, 0));
+//	if (BlockData != 0)
+//	{
+//		Filtered = BlockData<0 ? float16_t2(0.0,0.0) : float16_t2(1.0,1.0);
+//	}
+//	else
+	{
+		Filtered = FilterHorizontal(ScreenLoc, BlockLoc);
+	}
+	Output[ScreenLoc] = Filtered.x;
+	Output[ScreenLoc + uint2(0,4)].x = Filtered.y;
+}

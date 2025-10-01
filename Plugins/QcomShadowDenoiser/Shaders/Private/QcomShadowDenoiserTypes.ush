@@ -1,0 +1,46 @@
+//============================================================================================================
+//
+//
+//                  Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+//                              SPDX-License-Identifier: BSD-3-Clause
+//
+//============================================================================================================
+
+//
+// Shared type definitions for Qualcomm Shadow Denoiser shaders
+//
+
+#pragma once
+
+#if !PLATFORM_SUPPORTS_REAL_TYPES
+#define uint16_t min16uint
+#define int16_t min16int
+#endif
+
+#define uint16_t4 vector<uint16_t, 4>
+#define uint16_t2 vector<uint16_t, 2>
+#define int16_t4 vector<int16_t, 4>
+#define int16_t2 vector<int16_t, 2>
+#define float16_t half
+#define float16_t2 half2
+#define float16_t4 half4
+
+#define static_const static const
+
+#define textureLod(T, UV, LOD)				T.SampleLevel(GlobalBilinearClampedSampler, UV, LOD)
+
+#define textureGather(T, UV)				T.GatherRed(GlobalBilinearClampedSampler, UV)
+#define textureGatherRed(T, UV)				T.GatherRed(GlobalBilinearClampedSampler, UV)
+#define textureGatherGreen(T, UV)			T.GatherGreen(GlobalBilinearClampedSampler, UV)
+#define textureGatherBlue(T, UV)			T.GatherBlue(GlobalBilinearClampedSampler, UV)
+#define textureGatherAlpha(T, UV)			T.GatherAlpha(GlobalBilinearClampedSampler, UV)
+
+#define textureGatherOffset(T, UV, O)		T.GatherRed(GlobalBilinearClampedSampler, UV, O)
+#define textureGatherRedOffset(T, UV, O)	T.GatherRed(GlobalBilinearClampedSampler, UV, O)
+#define textureGatherGreenOffset(T, UV, O)	T.GatherGreen(GlobalBilinearClampedSampler, UV, O)
+#define textureGatherBlueOffset(T, UV, O)	T.GatherBlue(GlobalBilinearClampedSampler, UV, O)
+#define textureGatherAlphaOffset(T, UV, O)	T.GatherAlpha(GlobalBilinearClampedSampler, UV, O)
+
+#define texelFetch(T, LOC, MIP)				T.Load(int3(LOC,MIP))
+#define texelFetchOffset(T, LOC, MIP, O)	T.Load(int3(LOC,MIP), O)
+

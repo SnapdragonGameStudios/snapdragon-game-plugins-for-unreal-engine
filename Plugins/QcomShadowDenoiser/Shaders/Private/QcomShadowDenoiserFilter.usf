@@ -1,0 +1,45 @@
+//============================================================================================================
+//
+//
+//                  Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+//                              SPDX-License-Identifier: BSD-3-Clause
+//
+//============================================================================================================
+
+#include "/Engine/Public/Platform.ush"
+#include "/Engine/Private/SceneTexturesCommon.ush"
+// Include the platform specific types
+#include "QcomShadowDenoiserTypes.ush"
+
+#ifndef ATROUS_STEP
+	#error Filter must have ATROUS_STEP permutation defined.
+#endif
+
+// Shader parameters
+#include "/Engine/Private/Common.ush"
+#include "/Engine/Private/SceneTextureParameters.ush"
+Texture2D<float4>	InputShadowBuffer;
+Texture2D<int>		InputTileClassificationTexture;
+RWTexture2D<float4>	Output;
+
+// Local constants
+static const float kDepthSensitivity = 1.0;	// Larger values makes depth difference calculation more sensitive (neighbor pixels will contribute less to the filter)
+
+// Defines required by implementation header
+#define INPUT_SHADOW_BUFFER					InputShadowBuffer
+#define INPUT_TILE_CLASSIFICATION_BUFFER	InputTileClassificationTexture
+#define ATROUS_FILTER_STEPSIZE				(1<<ATROUS_STEP)
+
+// Include the platform agnostic implementation
+#include "/ThirdParty/QcomShadowDenoiser/Shared/QcomShadowDenoiserFilter.h"
+
+
+[numthreads(8, 8, 1)]
+void FilterCS(uint3 DispatchThreadId : SV_DispatchThreadID, uint3 GroupId : SV_GroupID)
+{
+	uint2 ScreenLoc = DispatchThreadId.xy;
+	uint2 TileLoc = GroupId.xy;
+	
+	float2 Filtered = FilterAtrous(ScreenLoc, TileLoc);
+	Output[ScreenLoc] = float4(Filtered.x, Filtered.y, Filtered.x, 0.0);
+}

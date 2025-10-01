@@ -1,0 +1,49 @@
+//============================================================================================================
+//
+//
+//                  Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+//                              SPDX-License-Identifier: BSD-3-Clause
+//
+//============================================================================================================
+
+//
+// Reduce input shadow buffer so each 8x8 screen block has a min/max value (for pixels with a distance in G).
+//
+
+// Inputs:  current (noisy) ray traced shadows (R=shadowed/lit, G=light to shadow hit point distance or -1 if lit)
+//			output block min/max (R=min, G=max)
+
+#include "/Engine/Public/Platform.ush"
+// Include the platform specific types
+#include "QcomShadowDenoiserTypes.ush"
+
+// Shader parameters
+#include "/Engine/Private/Common.ush"
+float4				ThreadIdToBufferUV;
+uint2				BlockMaxSize;
+Texture2D<float2>	InputRtShadowTexture;
+RWTexture2D<float2>	OutputMinMaxBuffer;
+
+// Local constants
+
+// Defines required by implementation header
+#define INPUT_RT_SHADOW_BUFFER	InputRtShadowTexture
+
+// Include the platform agnostic implementation
+#include "/ThirdParty/QcomShadowDenoiser/Shared/QcomShadowDenoiserTileMinMax.h"
+
+
+[numthreads(8, 8, 1)]
+void BlockMinMaxCS(uint3 DispatchThreadId : SV_DispatchThreadID)
+{
+    const uint2 TileLoc = DispatchThreadId.xy;
+	if (!all(TileLoc < (uint2)BlockMaxSize))
+		return;
+
+	const uint2 InputLoc = TileLoc * uint2(8, 8);
+	float2 InputUV = InputLoc.xy * ThreadIdToBufferUV.xy;
+
+	half2 MinMax = TileMinMax(InputUV);
+
+	OutputMinMaxBuffer[TileLoc] = MinMax;
+}

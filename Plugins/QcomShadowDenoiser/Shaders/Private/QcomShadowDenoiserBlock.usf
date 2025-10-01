@@ -1,0 +1,46 @@
+//============================================================================================================
+//
+//
+//                  Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+//                              SPDX-License-Identifier: BSD-3-Clause
+//
+//============================================================================================================
+
+//
+// Determine tile level (8x8) attributes - used to optimize denoising of fully lit or fully shadowed tiles (8x8 pixels).
+//
+
+// Inputs:  image with bitmask representing the 'shadowed' pixels in an 8x8 area (top 8x8 in x channel, bottom 8x4 in y channel)
+//			output tile data
+
+#include "/Engine/Public/Platform.ush"
+#include "/Engine/Private/SceneTexturesCommon.ush"
+// Include the platform specific types
+#include "QcomShadowDenoiserTypes.ush"
+
+// Shader parameters
+float4				ThreadIdToBufferUV;
+uint2				BlockMaxSize;
+Texture2D<uint2>	InputShadowBitBuffer;
+Texture2D<int>		InputHistoryClassificationBuffer;
+RWTexture2D<int>	OutputClassificationBuffer;
+
+// Defines required by implementation header
+#define INPUT_SHADOWMASK_BUFFER				InputShadowBitBuffer
+#define INPUT_HISTORY_CLASSIFICATION_BUFFER	InputHistoryClassificationBuffer
+
+// Include the platform agnostic implementation
+#include "/ThirdParty/QcomShadowDenoiser/Shared/QcomShadowDenoiserBlock.h"
+
+
+[numthreads(8, 8, 1)]
+void BlockCS(uint3 DispatchThreadId : SV_DispatchThreadID)
+{
+    const uint3 TileLoc = DispatchThreadId;
+	if (!all(TileLoc < (uint2)BlockMaxSize))
+		return;
+
+	int TileData = TileClassification(TileLoc);
+	
+	OutputClassificationBuffer[TileLoc.xy] = TileData;
+}

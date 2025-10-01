@@ -1,0 +1,46 @@
+//============================================================================================================
+//
+//
+//                  Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+//                              SPDX-License-Identifier: BSD-3-Clause
+//
+//============================================================================================================
+
+//
+// Reduce input shadow buffer so each 8x8 screen block is represented by a single 64bit texel with one bit per pixel (set if 'shadowed').
+//
+
+// Inputs:  current (noisy) ray traced shadows
+//			output 'shadowed' bit mask (64 bits for 8x8 block)
+
+#include "/Engine/Public/Platform.ush"
+// Include the platform specific types
+#include "QcomShadowDenoiserTypes.ush"
+
+// Shader parameters
+#include "/Engine/Private/Common.ush"
+float4				ThreadIdToBufferUV;
+uint2				BlockMaxSize;
+Texture2D<float2>	InputRtShadowTexture;			// r=0.0 or 1.0 (shadowed or lit)
+RWTexture2D<uint2>	OutputShadowBitBuffer;
+
+// Local constants
+
+// Defines required by implementation header
+#define INPUT_RT_SHADOW_BUFFER  InputRtShadowTexture
+
+// Include the platform agnostic implementation
+#include "/ThirdParty/QcomShadowDenoiser/Shared/QcomShadowDenoiserBitMask.h"
+
+
+[numthreads(8, 8, 1)]
+void BitMaskCS(uint3 DispatchThreadId : SV_DispatchThreadID)
+{
+    const uint2 OutputLoc = DispatchThreadId.xy;
+	if (!all(OutputLoc < (uint2)BlockMaxSize))
+		return;
+	const uint2 InputLoc  = OutputLoc.xy * uint2(8,8);
+
+	float2 InputUV = InputLoc.xy * ThreadIdToBufferUV.xy;
+    OutputShadowBitBuffer[OutputLoc.xy] = LoadBitMask8x8(InputUV);
+}

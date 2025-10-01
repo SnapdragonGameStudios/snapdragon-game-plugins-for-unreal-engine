@@ -1,0 +1,156 @@
+//============================================================================================================
+//
+//
+//                  Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+//                              SPDX-License-Identifier: BSD-3-Clause
+//
+//============================================================================================================
+
+//
+// Reproject the shadow value from last frame(s) into the current camera space.
+// Depth reprojected into current screen space is compared with the actual current depth in order to reject occluded (invalid) values.
+//
+
+// Inputs:  current (noisy) ray traced shadows
+//          current depth (from rasterization)
+//			previous (reprojected and filtered) shadow value
+//			previous moments
+//			output moments
+//			output reprojected shadow value
+
+// Moment buffers store the 1st and 2nd moments of the shadow value and the number of frames used to accumulate these (N) xyz = (1st*N, 2nd*N, N)
+// These moments are used to compute the temporal variance.
+
+#include "/Engine/Public/Platform.ush"
+#include "/Engine/Private/SceneTexturesCommon.ush"
+// Include the platform specific types
+#include "QcomShadowDenoiserTypes.ush"
+
+// Shader parameters
+#include "/Engine/Private/Common.ush"
+#include "/Engine/Private/SceneTextureParameters.ush"
+float4				ThreadIdToBufferUV;
+float4				HistoryBufferUVMinMax;
+Texture2D			HistoryDepthTexture;
+Texture2D<float2>	InputRtShadowTexture;
+Texture2D			HistoryShadowTexture;
+Texture2D<float4>	HistoryMomentTexture;
+Texture2D<float2>	HistoryDistanceTexture;
+Texture2D<int>		InputTileClassificationTexture;
+Texture2D<float2>	InputTileMinMaxTexture;
+Texture2D<float>	InputFixedFilterTexture; 
+RWTexture2D<float4>	OutputShadowBuffer;
+RWTexture2D<float4>	OutputMomentBuffer;
+RWTexture2D<float2>	OutputDistanceBuffer;
+
+#if FEATURE_LEVEL == FEATURE_LEVEL_ES3_1
+Texture2D SceneDepthTexture;
+Texture2D GBufferVelocityTexture;
+#define GetGlobalSampler(Filter,WrapMode) \
+	View.Shared##Filter##WrapMode##Sampler
+#define GlobalPointClampedSampler GetGlobalSampler(Point, Clamped)
+#define GlobalBilinearClampedSampler GetGlobalSampler(Bilinear, Clamped)
+#endif
+
+// Local constants
+static const float TUNING_REPROJECT_DEPTH_SENSITIVITY = 0.25;	// Larger values makes reprojected depth difference calculation more sensitive (reprojected pixels less likely to be accepted)
+static const float TUNING_HISTORY_CERTAINTY_THRESHOLD = 0.05;	// Certainty less than this just gets throw away (disoccluded)
+static const float TUNING_MINIMUM_UNREPROJECTED_SHADOW = 0.1;	// How much of the 'noisy' (un-reprojected) shadow from this frame to use when we have full confidence of the temporal value (smaller values make smoother shadows but slower response to input changes in cases where scene changes are not detected)
+
+#define INPUT_RT_SHADOW_BUFFER					InputRtShadowTexture
+#define INPUT_FILTERED_SHADOW_HISTORY_BUFFER	HistoryShadowTexture
+#define INPUT_TILE_MINMAX_DISTANCE_BUFFER		InputTileMinMaxTexture
+#define INPUT_TILE_CLASSIFICATION_BUFFER		InputTileClassificationTexture
+#define INPUT_MINMAX_HISTORY_BUFFER				HistoryDistanceTexture
+#define INPUT_MOMENTS_HISTORY_BUFFER			HistoryMomentTexture
+#define INPUT_FIXED_FILTER_BUFFER				InputFixedFilterTexture
+
+
+// // Read history data for a screen location
+// void ReadReprojectedFrameData(float2 ViewportUV, out HistoryLocData ReprojectedFrameData)
+// {
+// 
+// 	// Read the moments (mean, variance) from the history buffer (output of this pass, last frame)
+// 	ReprojectedFrameData.Moments = HistoryMomentTexture.SampleLevel(GlobalPointClampedSampler, ViewportUV, 0);
+// 
+// 	// Read the shadow data (mean, variance) from the history buffer (output of the A-trous filter, last frame)
+// 	ReprojectedFrameData.Shadow = HistoryShadowTexture.SampleLevel(GlobalPointClampedSampler, ViewportUV, 0).xy;
+// 
+// 	// Read the min/max distance value for this sample from the history buffer
+// 	ReprojectedFrameData.DistanceMinMax = HistoryDistanceTexture.SampleLevel(GlobalPointClampedSampler, ViewportUV, 0);
+// }
+
+// Device Z (depth) to linear depth
+// float DeviceToLinearDepth(float2 ViewportUV, float DeviceDepth)
+// {
+//	return ConvertFromDeviceZ(DeviceDepth);
+//}
+
+// Implement "void ReadReprojectedFrameData(uint2 InScreenLoc, out DepthPositionData Output)"
+// which is called from inside the (shared) Reproject() function
+struct DepthPositionData
+{
+	float	CurrentLinearDepth;						// Depth sampled for the current frame.
+	float2	ReprojectedUV;							// Current position reprojected into the previous frame's view.
+	float	ReprojectedLinearDepth;					// Current depth reprojected into the previous frame's view
+	float	HistoryLinearDepth;						// Depth sampled at ReprojectedUV for the previous frame.
+};
+
+bool ReadAndReprojectPositionData(uint2 InScreenLoc, out DepthPositionData Output)
+{
+	// Read out current depth value.
+	float CurrentDeviceZ = SceneDepthTexture.Load(int3(InScreenLoc, 0)).x;
+
+	// Reproject the depth into the previous frame's space and use to predict where our screen pixel was last frame.
+	float2 CurrentBufferUV = (float2(InScreenLoc) + float2(0.5, 0.5)) * ThreadIdToBufferUV.xy + ThreadIdToBufferUV.zw;
+	float3 CurrentScreenPosition = float3(ViewportUVToScreenPos(CurrentBufferUV), CurrentDeviceZ);
+	float4 PrevScreenClipPrediction = mul(float4(CurrentScreenPosition, 1.0), View.ClipToPrevClip);
+	float3 PrevScreenPositionPrediction = PrevScreenClipPrediction.xyz / PrevScreenClipPrediction.w;
+
+	float4 Velocity = GBufferVelocityTexture.Load(int3(InScreenLoc,0));
+	if (Velocity.x > 0.0)
+	{
+		// Valid velocity sample, decode and use instead of the reprojected screen position.
+		float3 DecodedVelocity = DecodeVelocityFromTexture(Velocity);
+		PrevScreenPositionPrediction = CurrentScreenPosition - DecodedVelocity;
+	}
+	// Convert predicted position to UV space
+	PrevScreenPositionPrediction.xy = ScreenPosToViewportUV(PrevScreenPositionPrediction.xy);
+
+	// Sample the depth at the reprojected position (from the previous frame's depth buffer)
+	float ReprojectedDeviceZ = HistoryDepthTexture.SampleLevel(GlobalPointClampedSampler, PrevScreenPositionPrediction.xy, 0).r;
+
+	// Determine if the reprojected position is within the history view (wasnt reprojected off screen).
+	float2 ClampedReprojectedPositionUV = clamp(PrevScreenPositionPrediction.xy, HistoryBufferUVMinMax.xy, HistoryBufferUVMinMax.zw);
+	bool IsPredictionOnScreen = all(ClampedReprojectedPositionUV == PrevScreenPositionPrediction.xy);
+
+	// Populate Output
+	Output.CurrentLinearDepth	  = ConvertFromDeviceZ(CurrentDeviceZ);
+	Output.ReprojectedUV		  = PrevScreenPositionPrediction.xy;
+	Output.ReprojectedLinearDepth = ConvertFromDeviceZ(PrevScreenPositionPrediction.z);
+	Output.HistoryLinearDepth	  = ConvertFromDeviceZ(ReprojectedDeviceZ);
+
+	return IsPredictionOnScreen;
+
+}
+
+// Include the platform agnostic implementation
+#include "/ThirdParty/QcomShadowDenoiser/Shared/QcomShadowDenoiserReproject.h"
+
+
+[numthreads(8, 8, 1)]
+void ReprojectCS(uint3 DispatchThreadId : SV_DispatchThreadID, uint3 GroupId : SV_GroupID)
+{
+	uint2 ScreenLoc = DispatchThreadId.xy;
+	//Output entire buffer size, but pixels over the 'edge' of HistoryBufferUVMinMax should be clamped.  There may also be writes outside the bounds of the outputs, but that is ok per hlsl/vulkan spec!
+	uint2 ClampedScreenLoc = min(DispatchThreadId.xy, ((uint2)View.ViewSizeAndInvSize.xy) - 1);
+	uint2 TileLoc = GroupId.xy;
+
+	ReprojectOutputs Outputs;
+	Reproject(ClampedScreenLoc, TileLoc, PERMUTATION_TEMPORAL_REJECTMODE, Outputs);
+
+	OutputMomentBuffer[ScreenLoc] = Outputs.Moments;
+	OutputShadowBuffer[ScreenLoc] = float4(Outputs.Shadow, 0.0, 0.0);
+	OutputDistanceBuffer[ScreenLoc] = Outputs.DistanceMinMax;
+}
+

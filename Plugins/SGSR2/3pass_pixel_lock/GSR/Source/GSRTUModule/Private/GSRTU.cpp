@@ -25,7 +25,7 @@
 #include "RenderGraphBuilder.h"
 //#include "PostProcess/PostProcessMitchellNetravali.h"
 
-DECLARE_GPU_STAT(GSRPass)
+DECLARE_GPU_STAT(GSRPass);
 DECLARE_GPU_STAT_NAMED(GSRDispatch, TEXT("GSR Dispatch"));
 
 typedef enum GSRQualityMode

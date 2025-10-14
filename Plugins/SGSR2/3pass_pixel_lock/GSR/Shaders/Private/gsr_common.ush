@@ -31,6 +31,10 @@
 #define int16_t2   int2
 #define int16_t3   int3
 #define int16_t4   int4
+#define half       float
+#define half2      float2
+#define half3      float3
+#define half4      float4
 #endif
 
 #pragma warning(error: 3206)

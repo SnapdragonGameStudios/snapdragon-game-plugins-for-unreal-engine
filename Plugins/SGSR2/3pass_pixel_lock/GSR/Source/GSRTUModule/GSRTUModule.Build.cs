@@ -20,7 +20,8 @@ public class GSRTUModule : ModuleRules
 			new string[]{
 				// ... add public include paths required here ...
 				EngineDirectory + "/Source/Runtime/Renderer/Private",
-			}
+                EngineDirectory + "/Source/Runtime/Renderer/Internal",
+            }
 			);
 
 		PrivateIncludePaths.AddRange(

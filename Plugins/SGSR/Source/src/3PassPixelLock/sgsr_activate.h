@@ -57,17 +57,12 @@ float EvaluateSurface(int2 iPxPos, float2 fMotionVector)
 float ComputeDepthClip(float2 fUvSample,float fCurrentDepthSample)
 {
 	float fCurrentDepthViewSpace = GetViewSpaceDepth(fCurrentDepthSample);
-	int2 iOffsets[4];
+	int2 iOffsets[4] = { int2(0, 0), int2(1, 0), int2(0, 1), int2(1, 1) };
 	float fWeights[4];
 
 	float2 fPxSample = (fUvSample * InputInfo_ViewportSize) - float2(0.5, 0.5);
 	int2 iBasePos = int2(floor(fPxSample));
 	float2 fPxFrac = frac(fPxSample);
-
-	iOffsets[0] = int2(0, 0);
-	iOffsets[1] = int2(1, 0);
-	iOffsets[2] = int2(0, 1);
-	iOffsets[3] = int2(1, 1);
 
 	fWeights[0] = (1 - fPxFrac.x) * (1 - fPxFrac.y);
 	fWeights[1] = (fPxFrac.x) * (1 - fPxFrac.y);
@@ -300,7 +295,7 @@ void Activate(uint2 DisThreadID)
 {
 	float2 ViewportUV = (float2(DisThreadID) + 0.5f) * InputInfo_ViewportSizeInverse;
 
-	float3 motionDepth = DilatedMotionDepthLuma[DisThreadID].xyz; // dilated_motion dilated_depth
+	float3 motionDepth = DilatedMotionDepthLuma[DisThreadID].xyz;
 	float2 motion = motionDepth.xy;
 	float depth = motionDepth.z;
 

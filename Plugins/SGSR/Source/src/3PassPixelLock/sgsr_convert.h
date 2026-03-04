@@ -186,11 +186,11 @@ void Convert(uint16_t2 DisThreadID)
 	EncodedVelocity.x = InputVelocity.GatherRed(PointClamp, gatherCoord).y;
 	EncodedVelocity.y = InputVelocity.GatherGreen(PointClamp, gatherCoord).y;
 	#else
-	half4 EncodedVelocity = InputVelocity[fNearestDepthCoord].xyxy;
+	float4 EncodedVelocity = InputVelocity[fNearestDepthCoord].xyxy;
 	#endif //ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION> 1
 
 	#else
-	half4 EncodedVelocity = InputVelocity[fNearestDepthCoord].xyxy;
+	float4 EncodedVelocity = InputVelocity[fNearestDepthCoord].xyxy;
 	#endif //COMPILER_GLSL_ES3_1
 
 

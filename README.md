@@ -1,13 +1,13 @@
 # Snapdragon™ Game Plugins for Unreal Engine
 
 ### Table of contents
-- [Snapdragon™ Game Plugins for Unreal Engine](#snapdragon-game-plugins-for-unreal-engine)
-		- [Table of contents](#table-of-contents)
+
 - [Introduction](#introduction)
 - [Usage Instructions](#usage-instructions)
 - [List of Plugins](#list-of-plugins)
-	- [Snapdragon™ Game Super Resolution 1](#snapdragon-game-super-resolution-1)
-	- [Snapdragon™ Game Super Resolution 2](#snapdragon-game-super-resolution-2)
+	- [Snapdragon™ Game Super Resolution](#snapdragon-game-super-resolution)
+		- [Snapdragon™ Game Super Resolution 2](#snapdragon-game-super-resolution-2)
+		- [Snapdragon™ Game Super Resolution 1](#snapdragon-game-super-resolution-1)
 	- [Qualcomm™ NPE Plugin](#qualcomm-npe-plugin)
 - [License](#license)
 
@@ -34,20 +34,7 @@ Note: The plugins are normally just drag and drop, and usually they can all be u
 *Available Engine Versions:*
 | [4.27 SGSR1](https://github.com/quic/snapdragon-game-plugins-for-unreal-engine/tree/engine/4.27/Plugins/SGSR) | [4.27 SGSR2](https://github.com/quic/snapdragon-game-plugins-for-unreal-engine/tree/engine/4.27/Plugins/SGSR2) | [5.0-5.6](https://github.com/quic/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.6/Plugins/SGSR) |
 |------|-----|-----|
-
-### SGSR Spatial Upscaler(SGSR1)
-Snapdragon™ Game Studios developed Snapdragon™ Game Super Resolution 1 (Snapdragon™ GSR 1 or SGSR1), which integrates upscaling and sharpening in one single GPU shader pass. The algorithm uses a 12-tap Lanczos-like scaling filter and adaptive sharpening filter, which presents smooth images and sharp edges.
-
-Our solution provides an efficient solution for games to draw 2D UI at device resolution for better visual quality, while rendering the 3D scene at a lower resolution for performance and power savings.
-
-<img src="media/snapdragon_gsr_video.gif" width="500" height="500" />
-
-The technique has visual quality on par with other spatial upscaling techniques while being highly optimized for Adreno™ GPU hardware.
-
-For more information about the upscaler (and standalone shaders), please take a look at our [Snapdragon Game Super Resolution](https://github.com/quic/snapdragon-gsr) repository.
-
-### SGSR Temporal Upscaler(SGSR2)
-
+### Snapdragon™ Game Super Resolution 2
 
 <img src="media/sgsr2_hero_image.png" width="720px" >
 <br>
@@ -63,6 +50,16 @@ Snapdragon™ GSR 2 is an improvement on all fronts, ensuring applications retai
 <img src="media/sgsr2_dragon_mosaic_text.png" width="720px" >
 <br>
 <br>
+
+For more information about the upscaler (and standalone shaders), please take a look at our [Snapdragon Game Super Resolution](https://github.com/quic/snapdragon-gsr) repository.
+### Snapdragon™ Game Super Resolution 1
+Snapdragon™ Game Studios developed Snapdragon™ Game Super Resolution 1 (Snapdragon™ GSR 1 or SGSR1), which integrates upscaling and sharpening in one single GPU shader pass. The algorithm uses a 12-tap Lanczos-like scaling filter and adaptive sharpening filter, which presents smooth images and sharp edges.
+
+Our solution provides an efficient solution for games to draw 2D UI at device resolution for better visual quality, while rendering the 3D scene at a lower resolution for performance and power savings.
+
+<img src="media/snapdragon_gsr_video.gif" width="500" height="500" />
+
+The technique has visual quality on par with other spatial upscaling techniques while being highly optimized for Adreno™ GPU hardware.
 
 For more information about the upscaler (and standalone shaders), please take a look at our [Snapdragon Game Super Resolution](https://github.com/quic/snapdragon-gsr) repository.
 

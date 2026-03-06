@@ -17,7 +17,7 @@ The Snapdragon Game AI SDK provides a comprehensive suite of on-device AI featur
 
 ### **SGAISpeechRecognizer**
 *Available Engine Versions:*
-| [5.6](https://github.com/quic/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.6/Plugins/SGAI/sgai-speechrecognizer) |
+| [5.6](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.6/Plugins/SGAI/SGAISpeechRecognizer) |
 |---|
 
 
@@ -27,7 +27,7 @@ Transform player voice input into text with real-time speech recognition.
 
 ### **SGAILLMPipelines**
 *Available Engine Versions:* 
-| [5.6](https://github.com/quic/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.6/Plugins/SGAI/sgai-llmpipelines) |
+| [5.6](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.6/Plugins/SGAI/SGAILLMPipelines) |
 |---|
 
 Integrate large language models into your game for dynamic, context-aware AI interactions. 
@@ -36,7 +36,7 @@ Integrate large language models into your game for dynamic, context-aware AI int
 
 ### **SGAITextToSpeech**
 *Available Engine Versions:*
-| [5.6](https://github.com/quic/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.6/Plugins/SGAI/sgai-texttospeech) |
+| [5.6](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.6/Plugins/SGAI/SGAITextToSpeech) |
 |---|
 
 Bring your game characters to life with natural-sounding, AI-generated speech.

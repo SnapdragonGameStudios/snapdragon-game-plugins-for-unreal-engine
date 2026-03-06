@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root xmlns:android="http://schemas.android.com/apk/res/android">
+	<resourceCopies>
+		<log text="Copying GENIE libs..."/>
+		<copyFile src="$S(AbsPluginDir)/lib/aarch64-android/libGenie.so" dst="$S(BuildDir)/libs/$S(Architecture)/libGenie.so"/>
+	</resourceCopies>
+</root>

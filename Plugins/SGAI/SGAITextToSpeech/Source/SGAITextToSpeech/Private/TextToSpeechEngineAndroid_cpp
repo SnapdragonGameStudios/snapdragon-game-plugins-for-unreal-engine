@@ -1,0 +1,380 @@
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+// All rights reserved.
+
+#include "Android/TextToSpeechEngineAndroid.h"
+
+#if PLATFORM_ANDROID
+#include "Android/AndroidJavaEnv.h"
+
+UTextToSpeechEngineAndroid::UTextToSpeechEngineAndroid()
+	: JavaTTSInstance(nullptr)
+	, JavaTTSClass(nullptr)
+	, JavaCallbackClass(nullptr)
+	, JavaCallbackInstance(nullptr)
+	, Method_SetModelPath(nullptr)
+	, Method_SetLanguage(nullptr)
+	, Method_SetAudioEncoding(nullptr)
+	, Method_SetSpeechRate(nullptr)
+	, Method_SetPitch(nullptr)
+	, Method_SetVolumeGain(nullptr)
+	, Method_SetSampleRate(nullptr)
+	, Method_SetSkelLibPath(nullptr)
+	, Method_Init(nullptr)
+	, Method_Start(nullptr)
+	, Method_Stop(nullptr)
+	, Method_DeInit(nullptr)
+	, Method_Release(nullptr)
+{
+}
+
+UTextToSpeechEngineAndroid::~UTextToSpeechEngineAndroid()
+{
+	CleanupJNI();
+}
+
+ETTSErrorCode UTextToSpeechEngineAndroid::InitializeInternal(const FTTSConfig& Config)
+{
+	if (!InitializeJNI())
+	{
+		UE_LOG(LogTemp, Error, TEXT("TextToSpeechEngineAndroid: Failed to initialize JNI"));
+		return ETTSErrorCode::InitializationFailed;
+	}
+
+	JNIEnv* Env = FAndroidApplication::GetJavaEnv();
+	if (!Env)
+	{
+		UE_LOG(LogTemp, Error, TEXT("TextToSpeechEngineAndroid: Failed to get JNI environment"));
+		return ETTSErrorCode::InitializationFailed;
+	}
+
+	// Set model path
+	jstring JModelPath = Env->NewStringUTF(TCHAR_TO_UTF8(*Config.ModelPath));
+	Env->CallVoidMethod(JavaTTSInstance, Method_SetModelPath, JModelPath);
+	Env->DeleteLocalRef(JModelPath);
+
+	// Set language
+	FString LanguageStr = LanguageToString(Config.Language);
+	jstring JLanguage = Env->NewStringUTF(TCHAR_TO_UTF8(*LanguageStr));
+	Env->CallVoidMethod(JavaTTSInstance, Method_SetLanguage, JLanguage);
+	Env->DeleteLocalRef(JLanguage);
+
+	// Set audio encoding
+	FString EncodingStr = AudioEncodingToString(Config.AudioEncoding);
+	jstring JEncoding = Env->NewStringUTF(TCHAR_TO_UTF8(*EncodingStr));
+	Env->CallVoidMethod(JavaTTSInstance, Method_SetAudioEncoding, JEncoding);
+	Env->DeleteLocalRef(JEncoding);
+
+	// Set speech rate
+	jstring JSpeechRate = Env->NewStringUTF(TCHAR_TO_UTF8(*FString::Printf(TEXT("%.2f"), Config.SpeechRate)));
+	Env->CallVoidMethod(JavaTTSInstance, Method_SetSpeechRate, JSpeechRate);
+	Env->DeleteLocalRef(JSpeechRate);
+
+	// Set pitch
+	jstring JPitch = Env->NewStringUTF(TCHAR_TO_UTF8(*FString::Printf(TEXT("%.2f"), Config.Pitch)));
+	Env->CallVoidMethod(JavaTTSInstance, Method_SetPitch, JPitch);
+	Env->DeleteLocalRef(JPitch);
+
+	// Set volume gain
+	jstring JVolumeGain = Env->NewStringUTF(TCHAR_TO_UTF8(*FString::Printf(TEXT("%.2f"), Config.VolumeGain)));
+	Env->CallVoidMethod(JavaTTSInstance, Method_SetVolumeGain, JVolumeGain);
+	Env->DeleteLocalRef(JVolumeGain);
+
+	// Set sample rate
+	jstring JSampleRate = Env->NewStringUTF(TCHAR_TO_UTF8(*FString::Printf(TEXT("%d"), Config.SampleRate)));
+	Env->CallVoidMethod(JavaTTSInstance, Method_SetSampleRate, JSampleRate);
+	Env->DeleteLocalRef(JSampleRate);
+
+	// Set skeleton library path if provided
+	if (!Config.SkelLibPath.IsEmpty())
+	{
+		jstring JSkelLibPath = Env->NewStringUTF(TCHAR_TO_UTF8(*Config.SkelLibPath));
+		Env->CallVoidMethod(JavaTTSInstance, Method_SetSkelLibPath, JSkelLibPath);
+		Env->DeleteLocalRef(JSkelLibPath);
+	}
+
+	// Initialize the TTS engine
+	Env->CallVoidMethod(JavaTTSInstance, Method_Init);
+
+	if (Env->ExceptionCheck())
+	{
+		Env->ExceptionDescribe();
+		Env->ExceptionClear();
+		UE_LOG(LogTemp, Error, TEXT("TextToSpeechEngineAndroid: Exception during initialization"));
+		return ETTSErrorCode::InitializationFailed;
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("TextToSpeechEngineAndroid: Initialized successfully"));
+	return ETTSErrorCode::Success;
+}
+
+ETTSErrorCode UTextToSpeechEngineAndroid::SpeakInternal(const FString& Text)
+{
+	JNIEnv* Env = FAndroidApplication::GetJavaEnv();
+	if (!Env || !JavaTTSInstance)
+	{
+		UE_LOG(LogTemp, Error, TEXT("TextToSpeechEngineAndroid: Invalid JNI environment or instance"));
+		return ETTSErrorCode::NotInitialized;
+	}
+
+	jstring JText = Env->NewStringUTF(TCHAR_TO_UTF8(*Text));
+	Env->CallVoidMethod(JavaTTSInstance, Method_Start, JText);
+	Env->DeleteLocalRef(JText);
+
+	if (Env->ExceptionCheck())
+	{
+		Env->ExceptionDescribe();
+		Env->ExceptionClear();
+		UE_LOG(LogTemp, Error, TEXT("TextToSpeechEngineAndroid: Exception during speak"));
+		return ETTSErrorCode::InternalError;
+	}
+
+	return ETTSErrorCode::Success;
+}
+
+void UTextToSpeechEngineAndroid::StopInternal()
+{
+	JNIEnv* Env = FAndroidApplication::GetJavaEnv();
+	if (!Env || !JavaTTSInstance)
+	{
+		return;
+	}
+
+	Env->CallVoidMethod(JavaTTSInstance, Method_Stop);
+
+	if (Env->ExceptionCheck())
+	{
+		Env->ExceptionDescribe();
+		Env->ExceptionClear();
+	}
+}
+
+void UTextToSpeechEngineAndroid::DeinitializeInternal()
+{
+	JNIEnv* Env = FAndroidApplication::GetJavaEnv();
+	if (!Env || !JavaTTSInstance)
+	{
+		return;
+	}
+
+	Env->CallVoidMethod(JavaTTSInstance, Method_DeInit);
+	Env->CallVoidMethod(JavaTTSInstance, Method_Release);
+
+	if (Env->ExceptionCheck())
+	{
+		Env->ExceptionDescribe();
+		Env->ExceptionClear();
+	}
+
+	CleanupJNI();
+}
+
+bool UTextToSpeechEngineAndroid::InitializeJNI()
+{
+	JNIEnv* Env = FAndroidApplication::GetJavaEnv();
+	if (!Env)
+	{
+		return false;
+	}
+
+	// Find TTS class
+	jclass LocalTTSClass = FAndroidApplication::FindJavaClass("com/qualcomm/qti/voice/assist/tts/sdk/TTS");
+	if (!LocalTTSClass)
+	{
+		UE_LOG(LogTemp, Error, TEXT("TextToSpeechEngineAndroid: Failed to find TTS class"));
+		return false;
+	}
+	JavaTTSClass = (jclass)Env->NewGlobalRef(LocalTTSClass);
+	Env->DeleteLocalRef(LocalTTSClass);
+
+	// Find callback class
+	jclass LocalCallbackClass = FAndroidApplication::FindJavaClass("com/qualcomm/qti/voice/assist/tts/sdk/TTSResultCallback");
+	if (!LocalCallbackClass)
+	{
+		UE_LOG(LogTemp, Error, TEXT("TextToSpeechEngineAndroid: Failed to find TTSResultCallback class"));
+		return false;
+	}
+	JavaCallbackClass = (jclass)Env->NewGlobalRef(LocalCallbackClass);
+	Env->DeleteLocalRef(LocalCallbackClass);
+
+	// Create callback instance
+	if (!RegisterNativeMethods(Env))
+	{
+		UE_LOG(LogTemp, Error, TEXT("TextToSpeechEngineAndroid: Failed to register native methods"));
+		return false;
+	}
+
+	// Get newInstance method
+	jmethodID NewInstanceMethod = Env->GetStaticMethodID(JavaTTSClass, "newInstance", 
+		"(Lcom/qualcomm/qti/voice/assist/tts/sdk/TTSResultCallback;)Lcom/qualcomm/qti/voice/assist/tts/sdk/TTS;");
+	if (!NewInstanceMethod)
+	{
+		UE_LOG(LogTemp, Error, TEXT("TextToSpeechEngineAndroid: Failed to find newInstance method"));
+		return false;
+	}
+
+	// Create TTS instance
+	jobject LocalTTSInstance = Env->CallStaticObjectMethod(JavaTTSClass, NewInstanceMethod, JavaCallbackInstance);
+	if (!LocalTTSInstance)
+	{
+		UE_LOG(LogTemp, Error, TEXT("TextToSpeechEngineAndroid: Failed to create TTS instance"));
+		return false;
+	}
+	JavaTTSInstance = Env->NewGlobalRef(LocalTTSInstance);
+	Env->DeleteLocalRef(LocalTTSInstance);
+
+	// Get method IDs
+	Method_SetModelPath = Env->GetMethodID(JavaTTSClass, "setModelPath", "(Ljava/lang/String;)V");
+	Method_SetLanguage = Env->GetMethodID(JavaTTSClass, "setLanguage", "(Ljava/lang/String;)V");
+	Method_SetAudioEncoding = Env->GetMethodID(JavaTTSClass, "setAudioEncoding", "(Ljava/lang/String;)V");
+	Method_SetSpeechRate = Env->GetMethodID(JavaTTSClass, "setSpeechRate", "(Ljava/lang/String;)V");
+	Method_SetPitch = Env->GetMethodID(JavaTTSClass, "setPitch", "(Ljava/lang/String;)V");
+	Method_SetVolumeGain = Env->GetMethodID(JavaTTSClass, "setVolumeGain", "(Ljava/lang/String;)V");
+	Method_SetSampleRate = Env->GetMethodID(JavaTTSClass, "setSampleRate", "(Ljava/lang/String;)V");
+	Method_SetSkelLibPath = Env->GetMethodID(JavaTTSClass, "setSkelLibPath", "(Ljava/lang/String;)V");
+	Method_Init = Env->GetMethodID(JavaTTSClass, "init", "()V");
+	Method_Start = Env->GetMethodID(JavaTTSClass, "start", "(Ljava/lang/String;)V");
+	Method_Stop = Env->GetMethodID(JavaTTSClass, "stop", "()V");
+	Method_DeInit = Env->GetMethodID(JavaTTSClass, "deInit", "()V");
+	Method_Release = Env->GetMethodID(JavaTTSClass, "release", "()V");
+
+	return true;
+}
+
+void UTextToSpeechEngineAndroid::CleanupJNI()
+{
+	JNIEnv* Env = FAndroidApplication::GetJavaEnv();
+	if (!Env)
+	{
+		return;
+	}
+
+	if (JavaTTSInstance)
+	{
+		Env->DeleteGlobalRef(JavaTTSInstance);
+		JavaTTSInstance = nullptr;
+	}
+
+	if (JavaTTSClass)
+	{
+		Env->DeleteGlobalRef(JavaTTSClass);
+		JavaTTSClass = nullptr;
+	}
+
+	if (JavaCallbackInstance)
+	{
+		Env->DeleteGlobalRef(JavaCallbackInstance);
+		JavaCallbackInstance = nullptr;
+	}
+
+	if (JavaCallbackClass)
+	{
+		Env->DeleteGlobalRef(JavaCallbackClass);
+		JavaCallbackClass = nullptr;
+	}
+}
+
+FString UTextToSpeechEngineAndroid::LanguageToString(ETTSLanguage Language) const
+{
+	switch (Language)
+	{
+	case ETTSLanguage::English:
+		return TEXT("English");
+	case ETTSLanguage::Chinese:
+		return TEXT("Chinese");
+	case ETTSLanguage::Spanish:
+		return TEXT("Spanish");
+	default:
+		return TEXT("English");
+	}
+}
+
+FString UTextToSpeechEngineAndroid::AudioEncodingToString(ETTSAudioEncoding Encoding) const
+{
+	switch (Encoding)
+	{
+	case ETTSAudioEncoding::LINEAR16:
+		return TEXT("0");
+	case ETTSAudioEncoding::MP3:
+		return TEXT("1");
+	case ETTSAudioEncoding::OGG_OPUS:
+		return TEXT("2");
+	case ETTSAudioEncoding::MULAW:
+		return TEXT("3");
+	case ETTSAudioEncoding::ALAW:
+		return TEXT("4");
+	default:
+		return TEXT("0");
+	}
+}
+
+void UTextToSpeechEngineAndroid::OnStartCallback(JNIEnv* Env, jobject Thiz, jlong NativePtr, jint SampleRate, jint AudioFormat, jint ChannelCount)
+{
+	UTextToSpeechEngineAndroid* Engine = reinterpret_cast<UTextToSpeechEngineAndroid*>(NativePtr);
+	if (Engine && Engine->IsValidLowLevel())
+	{
+		Engine->BroadcastSpeechStarted(SampleRate, AudioFormat, ChannelCount);
+	}
+}
+
+void UTextToSpeechEngineAndroid::OnAudioAvailableCallback(JNIEnv* Env, jobject Thiz, jlong NativePtr, jbyteArray AudioData, jint Offset, jint Size)
+{
+	UTextToSpeechEngineAndroid* Engine = reinterpret_cast<UTextToSpeechEngineAndroid*>(NativePtr);
+	if (Engine && Engine->IsValidLowLevel())
+	{
+		// Convert Java byte array to TArray<uint8>
+		jbyte* Bytes = Env->GetByteArrayElements(AudioData, nullptr);
+		TArray<uint8> Data;
+		Data.SetNum(Size);
+		FMemory::Memcpy(Data.GetData(), Bytes + Offset, Size);
+		Env->ReleaseByteArrayElements(AudioData, Bytes, JNI_ABORT);
+
+		Engine->BroadcastAudioDataAvailable(Data);
+	}
+}
+
+void UTextToSpeechEngineAndroid::OnDoneCallback(JNIEnv* Env, jobject Thiz, jlong NativePtr)
+{
+	UTextToSpeechEngineAndroid* Engine = reinterpret_cast<UTextToSpeechEngineAndroid*>(NativePtr);
+	if (Engine && Engine->IsValidLowLevel())
+	{
+		Engine->BroadcastSpeechCompleted();
+	}
+}
+
+void UTextToSpeechEngineAndroid::OnErrorCallback(JNIEnv* Env, jobject Thiz, jlong NativePtr, jint ErrorCode)
+{
+	UTextToSpeechEngineAndroid* Engine = reinterpret_cast<UTextToSpeechEngineAndroid*>(NativePtr);
+	if (Engine && Engine->IsValidLowLevel())
+	{
+		Engine->BroadcastSpeechError(ETTSErrorCode::InternalError);
+	}
+}
+
+bool UTextToSpeechEngineAndroid::RegisterNativeMethods(JNIEnv* Env)
+{
+	// Create a native callback implementation class
+	// This would typically be done through a custom Java class that implements TTSResultCallback
+	// and calls back to native methods. For simplicity, we'll create the callback instance here.
+	
+	// Note: In a full implementation, you would create a Java class that implements TTSResultCallback
+	// and has native methods that forward to these C++ callbacks.
+	
+	UE_LOG(LogTemp, Warning, TEXT("TextToSpeechEngineAndroid: Native callback registration needs custom Java implementation"));
+	
+	// For now, create a placeholder callback instance
+	jmethodID ConstructorMethod = Env->GetMethodID(JavaCallbackClass, "<init>", "()V");
+	if (ConstructorMethod)
+	{
+		jobject LocalCallback = Env->NewObject(JavaCallbackClass, ConstructorMethod);
+		if (LocalCallback)
+		{
+			JavaCallbackInstance = Env->NewGlobalRef(LocalCallback);
+			Env->DeleteLocalRef(LocalCallback);
+			return true;
+		}
+	}
+	
+	return false;
+}
+
+#endif // PLATFORM_ANDROID

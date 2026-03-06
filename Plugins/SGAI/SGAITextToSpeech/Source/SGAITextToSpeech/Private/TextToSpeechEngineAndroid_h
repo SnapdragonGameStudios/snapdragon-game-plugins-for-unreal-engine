@@ -1,0 +1,92 @@
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+// All rights reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "TextToSpeechEngine.h"
+
+#if PLATFORM_ANDROID
+#include "Android/AndroidJNI.h"
+#include "Android/AndroidApplication.h"
+#endif
+
+#include "TextToSpeechEngineAndroid.generated.h"
+
+/**
+ * Android implementation of Text-to-Speech engine
+ * Uses JNI to communicate with Qualcomm TTS SDK
+ */
+UCLASS()
+class SGAITEXTTOSPEECH_API UTextToSpeechEngineAndroid : public UTextToSpeechEngine
+{
+	GENERATED_BODY()
+
+public:
+	UTextToSpeechEngineAndroid();
+	virtual ~UTextToSpeechEngineAndroid();
+
+protected:
+	virtual ETTSErrorCode InitializeInternal(const FTTSConfig& Config) override;
+	virtual ETTSErrorCode SpeakInternal(const FString& Text) override;
+	virtual void StopInternal() override;
+	virtual void DeinitializeInternal() override;
+
+#if PLATFORM_ANDROID
+private:
+	/** JNI references */
+	jobject JavaTTSInstance;
+	jclass JavaTTSClass;
+	jclass JavaCallbackClass;
+	jobject JavaCallbackInstance;
+
+	/** JNI method IDs */
+	jmethodID Method_SetModelPath;
+	jmethodID Method_SetLanguage;
+	jmethodID Method_SetAudioEncoding;
+	jmethodID Method_SetSpeechRate;
+	jmethodID Method_SetPitch;
+	jmethodID Method_SetVolumeGain;
+	jmethodID Method_SetSampleRate;
+	jmethodID Method_SetSkelLibPath;
+	jmethodID Method_Init;
+	jmethodID Method_Start;
+	jmethodID Method_Stop;
+	jmethodID Method_DeInit;
+	jmethodID Method_Release;
+
+	/**
+	 * Initialize JNI references and method IDs
+	 * @return true if successful, false otherwise
+	 */
+	bool InitializeJNI();
+
+	/**
+	 * Clean up JNI references
+	 */
+	void CleanupJNI();
+
+	/**
+	 * Convert ETTSLanguage to Java string
+	 */
+	FString LanguageToString(ETTSLanguage Language) const;
+
+	/**
+	 * Convert ETTSAudioEncoding to Java string
+	 */
+	FString AudioEncodingToString(ETTSAudioEncoding Encoding) const;
+
+	/**
+	 * JNI callback handlers - called from Java
+	 */
+	static void OnStartCallback(JNIEnv* Env, jobject Thiz, jlong NativePtr, jint SampleRate, jint AudioFormat, jint ChannelCount);
+	static void OnAudioAvailableCallback(JNIEnv* Env, jobject Thiz, jlong NativePtr, jbyteArray AudioData, jint Offset, jint Size);
+	static void OnDoneCallback(JNIEnv* Env, jobject Thiz, jlong NativePtr);
+	static void OnErrorCallback(JNIEnv* Env, jobject Thiz, jlong NativePtr, jint ErrorCode);
+
+	/**
+	 * Register native methods with JNI
+	 */
+	bool RegisterNativeMethods(JNIEnv* Env);
+#endif
+};

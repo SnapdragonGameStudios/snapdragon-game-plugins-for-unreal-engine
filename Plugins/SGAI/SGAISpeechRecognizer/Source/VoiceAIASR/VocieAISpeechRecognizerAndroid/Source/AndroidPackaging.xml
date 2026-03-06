@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Copy Private Java -->
+<prebuildCopies>
+        <log text="Copying...  $S(PluginDir)/../../VocieAISpeechRecognizerAndroid/Source/Private/Java to $S(BuildDir)/src"/>
+        <copyDir src="$S(PluginDir)/../../VocieAISpeechRecognizerAndroid/Source/Private/Java" dst="$S(BuildDir)/src" />
+    </prebuildCopies>
+</root>

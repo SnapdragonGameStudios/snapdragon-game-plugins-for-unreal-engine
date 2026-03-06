@@ -1,0 +1,9 @@
+[submodule "Plugins/SGAI/SGAILLMPipelines/Source/ThirdParty/json"]
+	path = Plugins/SGAI/SGAILLMPipelines/Source/ThirdParty/json
+	url = https://github.com/nlohmann/json
+[submodule "Plugins/SGAI/SGAILLMPipelines/Source/PromptFormatter/ThirdParty/minja"]
+	path = Plugins/SGAI/SGAILLMPipelines/Source/PromptFormatter/ThirdParty/minja
+	url = https://github.com/google/minja.git
+[submodule "Plugins/SGAI/SGAILLMPipelines/Source/VectorDBProvider/ThirdParty/Annoy"]
+	path = Plugins/SGAI/SGAILLMPipelines/Source/VectorDBProvider/ThirdParty/Annoy
+	url = https://github.com/spotify/annoy.git

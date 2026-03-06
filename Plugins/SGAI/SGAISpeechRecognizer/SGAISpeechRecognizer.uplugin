@@ -1,0 +1,54 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "1.0.0",
+  "FriendlyName": "Voice AI Automatic Speech Recognition",
+  "Description": "UE Plugin wrapper for Qualcomm's Voice AI ASR SDK",
+  "Category": "Snapdragon GameAI",
+  "CreatedBy": "Qualcomm, Inc.",
+  "CreatedByURL": "",
+  "DocsURL": "",
+  "MarketplaceURL": "",
+  "SupportURL": "",
+  "CanContainContent": true,
+  "IsBetaVersion": false,
+  "IsExperimentalVersion": false,
+  "Installed": false,
+  "Modules": [
+    {
+      "Name": "SGAISpeechRecognizer",
+      "Type": "Runtime",
+      "LoadingPhase": "Default",
+      "PlatformAllowList": [
+        "Win64",
+        "Android"
+      ]
+    },
+    {
+      "Name": "VoiceAISpeechRecognizerWindows",
+      "Type": "Runtime",
+      "LoadingPhase": "None",
+      "PlatformAllowList": [
+        "Win64"
+      ]
+    },
+    {
+      "Name": "VoiceAISpeechRecognizerAndroid",
+      "Type": "Runtime",
+      "LoadingPhase": "None",
+      "PlatformAllowList": [
+        "Android"
+      ]
+    }
+  ],
+  "Plugins": [
+    {
+      "Name": "AudioCapture",
+      "Enabled": true
+    },
+    {
+      "Name": "QAIRT",
+      "Enabled": true
+    }
+  ]
+}

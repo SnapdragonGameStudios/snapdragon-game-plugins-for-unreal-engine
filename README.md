@@ -12,6 +12,10 @@
 		- [Snapdragon™ Game Super Resolution 1](#snapdragon-game-super-resolution-1)
 	- [Qualcomm™ NPE Plugin](#qualcomm-npe-plugin)
 	- [Qualcomm™ Shadow Denoiser](#qualcomm-shadow-denoiser)
+	- [Snapdragon™ Game AI SDK](#snapdragon-game-ai-sdk)
+		- [Speech Recognizer](#speech-recognizer)
+		- [LLM Pipelines](#llm-pipelines)
+		- [Text to Speech](#text-to-speech)
 - [License](#license)
 
 # Introduction
@@ -84,6 +88,35 @@ This plugin enables hardware acceleration of AI model inference on devices with 
 
 Plugin for reducing noise in ray-traced shadows on both desktop and mobile renderers, with optimizations for Qualcomm® Adreno™ GPUs.
 
-# License
+## Snapdragon™ Game AI SDK
+*Available Engine Versions:*
+| [5.6](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.6/Plugins/SGAI) |
+|------|
 
+Snapdragon™ Game AI SDK provides a comprehensive suite of on-device AI features optimized for real-time game scenarios. 
+
+![Snapdragon™ Game AI](media/sgai.png)
+
+### Speech Recognizer
+| [5.6](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.6/Plugins/SGAI/sgai-speechrecognizer) |
+|------|
+
+Transform player voice input into text with real-time speech recognition.
+- Real-time voice-to-text conversion
+- NPU accelerated inference using Qualcomm's Voice AI SDK
+### LLM Pipelines
+| [5.6](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.6/Plugins/SGAI/sgai-llmpipelines) |
+|------|
+
+Integrate large language models into your game for dynamic, context-aware AI interactions.
+- Seamless LLM integration in Unreal Engine
+- NPU accelerated LLM inference using Qualcomm's GenIE SDK.
+### Text to Speech
+| [5.6](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.6/Plugins/SGAI/sgai-texttospeech) |
+|------|
+
+Bring your game characters to life with natural-sounding, AI-generated speech.
+- Real-time audio generation
+- NPU accelerated inference using Qualcomm's Voice AI SDK
+# License
 Check out the [LICENSE](LICENSE) for more details.

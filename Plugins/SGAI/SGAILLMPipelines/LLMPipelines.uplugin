@@ -1,0 +1,47 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "1.0",
+  "FriendlyName": "LLMPipelines",
+  "Description": "",
+  "Category": "Other",
+  "CreatedBy": "",
+  "CreatedByURL": "",
+  "DocsURL": "",
+  "MarketplaceURL": "",
+  "SupportURL": "",
+  "CanContainContent": true,
+  "IsBetaVersion": false,
+  "IsExperimentalVersion": false,
+  "Installed": false,
+  "Modules": [
+    {
+      "Name": "LLMPipelines",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    },
+    {
+      "Name": "GenieLLMProvider",
+      "Type": "Runtime",
+            "LoadingPhase": "None",
+      "PlatformAllowList": [
+        "Android",
+        "Win64"
+      ]
+    },
+    {
+            "Name": "VectorDBProvider",
+      "Type": "Runtime",
+            "LoadingPhase": "None",
+      "PlatformAllowList": [
+        "Win64"
+      ]
+    }
+  ],
+  "Plugins": [
+    {
+      "Name": "QAIRT",
+      "Enabled": true
+    }
+  ]
+}

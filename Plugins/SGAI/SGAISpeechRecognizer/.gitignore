@@ -1,0 +1,18 @@
+# Copyright (c) Qualcomm Innovation Center, Inc. All rights reserved.
+# SPDX-License-Identifier: BSD-3-Clause
+
+**/Binaries/Win64/**
+
+# Ignore intermediate folders
+Intermediate/
+obj/
+.vs
+.vscode
+.idea/
+
+# ThirdParty
+/Source/VoiceAIASR/ThirdParty/VoiceAIASRLib/lib
+/Source/VoiceAIASR/ThirdParty/VoiceAIASRLib/inc
+/Source/VoiceAIASR/ThirdParty/VoiceAIASRLib/assets
+/Source/VoiceAIASR/ThirdParty/VoiceAIASRLib/models/*
+!/Source/VoiceAIASR/ThirdParty/VoiceAIASRLib/models/.gitkeep

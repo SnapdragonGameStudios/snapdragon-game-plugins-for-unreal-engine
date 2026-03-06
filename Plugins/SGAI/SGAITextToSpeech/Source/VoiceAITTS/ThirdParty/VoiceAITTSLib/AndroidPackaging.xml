@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+// Copyright (c) Qualcomm Innovation Center, Inc. All rights reserved.
+// SPDX-License-Identifier: BSD-3-Clause
+-->
+<root xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Copy the Whisper SDK JAR that houses all needed libs -->
+    <resourceCopies>
+        <log text="Copying tts libs"/>
+        <copyFile src="$S(PluginDir)/libs/android/tts-sdk.jar" dst="$S(BuildDir)/libs/tts-sdk.jar"/>
+		<copyDir src="$S(PluginDir)/libs/android/arm64-v8a" dst="$S(BuildDir)/jniLibs/arm64-v8a"/>
+    </resourceCopies>
+    <gradleAdditions>
+        <insert> dependencies { implementation files('libs/tts-sdk.jar') } </insert>
+    </gradleAdditions>
+    <soFiles>
+        <addFile src="$S(PluginDir)/lib/android/$S(Architecture)/*.so" dst="*" />
+    </soFiles>
+    <gameActivityClassAdditions>
+        <insert>
+            public String getNativeLibDir() {return getApplicationInfo().nativeLibraryDir;}
+        </insert>
+    </gameActivityClassAdditions>
+</root>

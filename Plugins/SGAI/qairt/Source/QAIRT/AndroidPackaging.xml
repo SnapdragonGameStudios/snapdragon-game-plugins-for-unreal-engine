@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root xmlns:android="http://schemas.android.com/apk/res/android">
+    <androidManifestUpdates>
+        <addElements tag="application">
+            <uses-native-library android:name="libcdsprpc.so" android:required="false"/>
+        </addElements>
+    </androidManifestUpdates>
+	<buildGradleAdditions>
+		<insert>
+			dependencies {implementation("com.qualcomm.qti:qnn-runtime:2.42.0")}
+        </insert>
+	</buildGradleAdditions>
+
+</root>

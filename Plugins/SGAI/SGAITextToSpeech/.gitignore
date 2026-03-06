@@ -1,0 +1,17 @@
+# Copyright (c) Qualcomm Innovation Center, Inc. All rights reserved.
+# SPDX-License-Identifier: BSD-3-Clause
+
+**/Binaries/Win64/**
+
+# Ignore intermediate folders
+Intermediate/
+obj/
+
+# Ignore VS / VS Code settings directory
+.vs
+.vscode
+
+# Ignore CLion directory
+.idea/
+
+/Source/VoiceAITTS/ThirdParty/VoiceAITTSLib/libs

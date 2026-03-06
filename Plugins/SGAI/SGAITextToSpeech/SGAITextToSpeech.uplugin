@@ -1,0 +1,36 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "1.0.0",
+  "FriendlyName": "SGAI Text To Speech",
+  "Description": "Text-to-Speech plugin for Android platform using Qualcomm VoiceAI TTS SDK",
+  "Category": "Snapdragon GameAI",
+  "CreatedBy": "Qualcomm",
+  "CreatedByURL": "https://www.qualcomm.com",
+  "DocsURL": "",
+  "MarketplaceURL": "",
+  "SupportURL": "",
+  "CanContainContent": false,
+  "IsBetaVersion": false,
+  "IsExperimentalVersion": false,
+  "Installed": false,
+  "Modules": [
+    {
+      "Name": "SGAITextToSpeech",
+      "Type": "Runtime",
+      "LoadingPhase": "Default",
+      "PlatformAllowList": [
+        "Android",
+        "Win64"
+      ]
+    },
+    {
+      "Name": "VoiceAITTS",
+      "Type": "Runtime",
+      "LoadingPhase": "None",
+      "PlatformAllowList": [
+        "Android"
+      ]
+    }
+  ]
+}

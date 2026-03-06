@@ -112,7 +112,7 @@ Integrate large language models into your game for dynamic, context-aware AI int
 - Seamless LLM integration in Unreal Engine
 - NPU accelerated LLM inference using Qualcomm's GenIE SDK.
 ### Text to Speech
-| [5.6](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.6/Plugins/SGAI/SGAI/SGAITextToSpeech) |
+| [5.6](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.6/Plugins/SGAI/SGAITextToSpeech) |
 |------|
 
 Bring your game characters to life with natural-sounding, AI-generated speech.

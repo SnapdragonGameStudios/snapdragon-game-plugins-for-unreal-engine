@@ -8,6 +8,4 @@
 
 #include "sgsr_common.ush"
 #include "/Engine/Public/Platform.ush"
-#include "/Engine/Private/Common.ush"
-#include "/ThirdParty/SGSR/2PassNoAlpha/sgsr_convert.hlsl"
-
+#include "/ThirdParty/SGSR/3PassCS/sgsr_upscale.hlsl"

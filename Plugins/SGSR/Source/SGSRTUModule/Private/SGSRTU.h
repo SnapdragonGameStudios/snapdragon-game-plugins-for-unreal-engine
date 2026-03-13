@@ -70,22 +70,12 @@ public:
 		const SGSRView& View,
 		const SGSRPassInput& PassInputs) const override;
 
-	SGSRPassOutput AddPasses_2PassNoAlpha(
-		FRDGBuilder& GraphBuilder,
-		const SGSRView& View,
-		const SGSRPassInput& PassInputs) const;
-
 	SGSRPassOutput AddPasses_2PassFS(
 		FRDGBuilder& GraphBuilder,
 		const SGSRView& View,
 		const SGSRPassInput& PassInputs) const;
 
-	SGSRPassOutput AddPasses_3Pass(
-		FRDGBuilder& GraphBuilder,
-		const SGSRView& View,
-		const SGSRPassInput& PassInputs) const;
-
-	SGSRPassOutput AddPasses_3PassPixelLock(
+	SGSRPassOutput AddPasses_3PassCS(
 		FRDGBuilder& GraphBuilder,
 		const SGSRView& View,
 		const SGSRPassInput& PassInputs) const;
@@ -118,9 +108,6 @@ private:
 	mutable FTextureRHIRef SceneColorpreAlpha;
 	mutable TRefCountPtr<IPooledRenderTarget> SceneColorpreAlphaRT;
 	mutable TRefCountPtr<IPooledRenderTarget> HistoryColorRT;
-	mutable TRefCountPtr<IPooledRenderTarget> HistoryActivateRT;
-	mutable TRefCountPtr<IPooledRenderTarget> HistoryLockStatusRT;
-	mutable TRefCountPtr<IPooledRenderTarget> HistoryDilatedMotionDepthLumaRT;
 
 	static float SavedScreenPercentage; 
 };

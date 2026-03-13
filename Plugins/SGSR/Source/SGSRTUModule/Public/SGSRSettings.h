@@ -19,10 +19,8 @@ UENUM()
 enum class ESGSRMethod : int32
 {
 	SU UMETA(DisplayName = "Spatial Upscaling"),
-	TU_2Pass_NoAlpha UMETA(DisplayName = "Temperal Upscaling 2 Pass No Alpha"),
 	TU_2Pass_FS UMETA(DisplayName = "Temperal Upscaling 2 Pass Fragment Shader"),
-	TU_3Pass UMETA(DisplayName = "Temperal Upscaling 3 Pass"),
-	TU_3Pass_PixelLock UMETA(DisplayName = "Temperal Upscaling 3 Pass Pixel Lock"),
+	TU_3Pass_CS UMETA(DisplayName = "Temperal Upscaling 3 Pass Computer Shader"),
 };
 
 /////SGSR SU Target
@@ -75,7 +73,7 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "General Settings", meta = (ConsoleVariable = "r.SGSR.Method", DisplayName = "Upscaling Method", ToolTip = "Selects upscaling method to be used with SGSR."))
 	ESGSRMethod UpscalingMethod;
 
-	UPROPERTY(Config, EditAnywhere, Category = "General Settings", meta = (ConsoleVariable = "r.SGSR.HalfPrecision", DisplayName = "Half Precision", EditCondition = "UpscalingMethod == ESGSRMethod::TU_3Pass_PixelLock || UpscalingMethod == ESGSRMethod::SU", ToolTip = "For SU and TU_3PassPixelLock only: Use half precision (16bit) arithmetic when platform support is available."))
+	UPROPERTY(Config, EditAnywhere, Category = "General Settings", meta = (ConsoleVariable = "r.SGSR.HalfPrecision", DisplayName = "Half Precision", EditCondition = "UpscalingMethod == ESGSRMethod::TU_2Pass_FS || UpscalingMethod == ESGSRMethod::TU_3Pass_CS || UpscalingMethod == ESGSRMethod::SU", ToolTip = "Use half precision (16bit) arithmetic when platform support is available."))
 	bool Halfprecision;
 
 	UPROPERTY(Config, EditAnywhere, Category = "SU Settings", meta = (ConsoleVariable = "r.SGSR.Target", DisplayName = "SU Target", EditCondition = "UpscalingMethod == ESGSRMethod::SU", ToolTip = "Selects target platform for SU."))
@@ -97,7 +95,7 @@ public:
 	bool ForceVertexDeformationOutputsVelocity;
 
 	//------Settings for Pixel Lock mode only--------
-	UPROPERTY(Config, EditAnywhere, Category = "TU Settings", meta = (ConsoleVariable = "r.SGSR.PixelLock", DisplayName = "Pixel Lock", EditCondition = "UpscalingMethod == ESGSRMethod::TU_3Pass_PixelLock", ToolTip = "Enable pixel lock for better thin feature upscaling (small performance hit)."))
+	UPROPERTY(Config, EditAnywhere, Category = "TU Settings", meta = (ConsoleVariable = "r.SGSR.PixelLock", DisplayName = "Pixel Lock", EditCondition = "UpscalingMethod == ESGSRMethod::TU_3Pass_CS", ToolTip = "Enable pixel lock for better thin feature upscaling (small performance hit)."))
 	bool PixelLock;
 	//-----------------------------------------------
 };

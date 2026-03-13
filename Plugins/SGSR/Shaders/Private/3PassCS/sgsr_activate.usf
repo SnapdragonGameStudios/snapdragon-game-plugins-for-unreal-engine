@@ -8,4 +8,4 @@
 
 #include "sgsr_common.ush"
 #include "/Engine/Public/Platform.ush"
-#include "/ThirdParty/SGSR/3Pass/sgsr_upscale.hlsl"
+#include "/ThirdParty/SGSR/3PassCS/sgsr_activate.hlsl"

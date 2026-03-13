@@ -2,13 +2,11 @@
 UE Plugin for Snapdragon Game Super Resolution, supporting UE 5.0-5.6
 
 ## Build SGSR in UE
-This release contains 5 methods of SGSR:<br/>
+This release contains 3 methods of SGSR:<br/>
 - Spatial Upscaler
 - Temporal Upscaler 
-  - 2 pass no alpha
   - 2 pass fragment shader
-  - 3 pass
-  - 3 pass pixel lock
+  - 3 pass compute shader
 1) Push folder "SGSR" into folder "Plugins" of UE5 engine source code(Engine\Plugins\Runtime\Qualcomm), or project plugin folder.
 2) Apply the patch under folder "Patches" to UE5 engine source code if needed. Patches are needed for:
    - UE5.3
@@ -51,10 +49,8 @@ In "Project Settings" tab, apply following configs
 	"Engine - Rendering" -> "Default Settings" -> "Anti-Aliasing Method": TemporalAA
 
 Command line:
-	2 pass no alpha: 		r.SGSR.Method 1
-	2 pass fragment shader: r.SGSR.Method 2
-	3 pass: 				r.SGSR.Method 3
-	3 pass pixel lock: 		r.SGSR.Method 4
+	2 pass fragment shader: r.SGSR.Method 1
+	3 pass compute shader: r.SGSR.Method 2
 ```
 In Engine\Config\BaseDeviceProfiles.ini:
 	set CVars=r.MobileContentScaleFactor=0.0 to [Android_Mid DeviceProfile] and [Android_High DeviceProfile]
@@ -132,3 +128,42 @@ adb shell pm grant com.YourCompany.[PROJECT] android.permission.WRITE_EXTERNAL_S
 - JRE:
   - 5.0-5.2: Java 1.8.0_242
   - 5.3-5.6: Java 17
+
+## Settings
+
+### Spatial Upscaler
+
+| Variant  | Console Variable        | Default Value | Value Range     | Details |
+|----------|--------------------------|---------------|------------------|---------|
+|     SU   | `r.SGSR.Enabled`        | 1             | 0,1              | Enable / disable GSR. |
+|          | `r.SGSR.Method`          | 0             | 0,1,2            | Choose which variant to use. **0 = SU**, **1 = TU 2pass-fs**, **2 = TU 3pass-cs.** |
+|          | `r.SGSR.HalfPrecision`  | 1             | 0,1              | Enable Half Precision shader arithmetic (platform dependent). May improve performance. Requires enabling FP16 (`bSupportsRealTypes=RuntimeGuaranteed` in `Engine/Config/Android/DataDrivenPlatformInfo.ini`). |
+|          | `r.SGSR.Target`        | 0             | 0,1,2              | Choose target (different shader codes in sgsr.ush): 0 = Mobile, 1 = High Quality, 2 = VR |
+
+---
+
+### Temporal Upscaler 
+- **2pass-fs**
+
+| Variant  | Console Variable        | Default Value | Value Range     | Details |
+|----------|--------------------------|---------------|------------------|---------|
+| 2pass-fs | `r.SGSR.Enabled`        | 1             | 0,1              | Enable / disable GSR. |
+|          | `r.SGSR.Method`          | 1             | 0,1,2            | Choose which variant to use. **0 = SU**, **1 = TU 2pass-fs**, **2 = TU 3pass-cs.** |
+|          | `r.SGSR.HalfPrecision`  | 1             | 0,1              | Enable Half Precision shader arithmetic (platform dependent). May improve performance. Requires enabling FP16 (`bSupportsRealTypes=RuntimeGuaranteed` in `Engine/Config/Android/DataDrivenPlatformInfo.ini`). |
+|          | `r.SGSR.5Sample`        | 1             | 0,1              | Controls sample number: 0 = 9 samples (better quality), 1 = 5 samples (better performance, default). |
+|          | `r.SGSR.LanczosOpt`     | 0             | 0,1              | Use improved Lanczos sampler to reduce flicker. |
+|          | `r.SGSR.ThinFeature`    | 0             | 0,1              | Detect and preserve thin features to suppress flicker. |
+
+---
+
+- **3pass-cs**
+
+| Variant  | Console Variable        | Default Value | Value Range     | Details |
+|----------|--------------------------|---------------|------------------|---------|
+| 3pass-cs | `r.SGSR.Enabled`        | 1             | 0,1              | Enable / disable GSR. |
+|          | `r.SGSR.Method`          | 2             | 0,1,2            | Choose which variant to use. **0 = SU**, **1 = TU 2pass-fs**, **2 = TU 3pass-cs.** |
+|          | `r.SGSR.5Sample`        | 1             | 0,1              | Controls sample number: 0 = 9 samples (better quality), 1 = 5 samples (better performance, default). |
+|          | `r.SGSR.DoSharpening`   | 0             | 0,1              | Add a sharpening pass. |
+|          | `r.SGSR.Sharpness`      | 1.12          | 1�1.5            | Adjust sharpening strength. |
+|          | `r.SGSR.PixelLock`      | 1             | 0,1              | Detect and preserve thin features. |
+|          | `r.SGSR.HalfPrecision`  | 1             | 0,1              | Enable Half Precision shader arithmetic (platform dependent). Requires enabling FP16 (`bSupportsRealTypes=RuntimeGuaranteed`). |

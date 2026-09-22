@@ -75,3 +75,8 @@ DerivedDataCache/*
 
 # Debug symbols
 *.pdb
+
+# Internal agent guidance
+AGENTS.md
+CLAUDE.md
+.skills/

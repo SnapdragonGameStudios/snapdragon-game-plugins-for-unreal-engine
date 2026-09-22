@@ -1,12 +1,12 @@
-# Qualcomm™ NPE Plugin 
+# Qualcomm™ NPE Plugin
 
-Plugin for **Neural Network Inference** using the *Qualcomm Neural Processing SDK* (also known as *SNPE*) to be used with Unreal Engine's *Neural Network Engine* (*NNE*) inference framework.<br>
+Plugin for **Neural Network Inference** using the *Qualcomm Neural Processing SDK* (also known as *SNPE*) to be used with Unreal Engine's *Neural Network Engine* (*NNE*) inference framework.
 
 This plugin enables hardware acceleration of AI model inference on devices with Qualcomm® Hexagon™ Processors.
 
 Developed and Tested with **Unreal Engine 5.4**.
 
-## Supported Platforms & Hardware
+## Supported platforms & Hardware
 
 | Platform | Support |
 | --- | --- |
@@ -16,13 +16,13 @@ Developed and Tested with **Unreal Engine 5.4**.
 
 **CPU** inference can be enabled via a boolean CVar, `snpe.CpuFallback`.
 
-## Getting Started
+## Getting started
 
 ### Plugin setup
 
-1. **Clone this repo** and follow the standard steps given by Unreal Engine to add this plugin as an **engine plugin** or **project plugin**.<br>
+1. **Clone this repo** and follow the standard steps given by Unreal Engine to add this plugin as an **engine plugin** or **project plugin**.
 
-1. **Download the [Qualcomm Neural Processing SDK](https://developer.qualcomm.com/software/qualcomm-neural-processing-sdk)**, also known as the *SNPE SDK* (currently tested with version 2.30).<br>
+1. **Download the [Qualcomm Neural Processing SDK](https://developer.qualcomm.com/software/qualcomm-neural-processing-sdk)**, also known as the *SNPE SDK* (currently tested with version 2.30).
 
 1. **`SNPELibrarySetup.bat`** is provided to copy the necessary include and library files from the downloaded SNPE SDK to the plugin. Use it as follows:
 ```console
@@ -32,7 +32,7 @@ Developed and Tested with **Unreal Engine 5.4**.
 ### Usage in your Unreal project
 
 1. Drag-and-drop the model files (`.dlc` format) into your Unreal project's Content Browser so that they are automatically converted into `UNNEModelData` data assets.
-    - Use the downloaded SNPE SDK to create DLC files from a variety of neural network file formats.<br>
+    - Use the downloaded SNPE SDK to create DLC files from a variety of neural network file formats.
     Documentation for this step is provided in the [SNPE SDK Reference Guide](https://docs.qualcomm.com/bundle/publicresource/topics/80-63442-2/introduction.html).
     - *This plugin assumes that all DLC models have **fixed input dimensions** (which you define while creating DLC models with the SNPE SDK).*
 

@@ -2,9 +2,9 @@
 
 ## Introduction
 
-This tutorial demonstrates how to load and deploy AI models in Unreal Engine applications on devices powered by Snapdragon NPUs utilizing Unreal’s NNE Framework and **Qualcomm’s NNE Runtime Plugin**.
+This tutorial demonstrates how to load and deploy AI models in Unreal Engine applications on devices powered by Snapdragon NPUs utilizing Unreal's NNE Framework and **Qualcomm's NNE Runtime Plugin**.
 
-With Qualcomm’s NNE Runtime Plugin, which integrates **Qualcomm’s AI Stack**, you will implement a hand-tracking demo and deploy it to a Snapdragon-powered device. You will grab the model available on Qualcomm's AI-Hub collection, convert it and load it in an Unreal project.
+With Qualcomm's NNE Runtime Plugin, which integrates **Qualcomm's AI Stack**, you will implement a hand-tracking demo and deploy it to a Snapdragon-powered device. You will grab the model available on Qualcomm's AI-Hub collection, convert it and load it in an Unreal project.
 
 The tutorial covers, step-by-step, how to:
 
@@ -15,7 +15,7 @@ The tutorial covers, step-by-step, how to:
 - Run inference
 - Gather and use the output
 
-By the end of this tutorial, you’ll be equipped to integrate your own neural network models into your Unreal Project and deploy them on Snapdragon-powered devices.
+By the end of this tutorial, you'll be equipped to integrate your own neural network models into your Unreal Project and deploy them on Snapdragon-powered devices.
 
 ## Getting Ready
 
@@ -32,7 +32,7 @@ By the end of this tutorial, you’ll be equipped to integrate your own neural n
 - HandTracking project files are located under samples folder.
 
 - Clone the upstream repo and add this plugin as an engine plugin or project plugin.
-[Plugins/SNPE](https://github.com/SnapdragonStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.4/Plugins/SNPE) 
+[Plugins/SNPE](https://github.com/SnapdragonStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.4/Plugins/SNPE)
 <img src="Media/2.png" alt = "NNERuntimeSNPE added as a project plugin in the HandTracking demo"/>
 
 - SNPELibrarySetup.bat is provided to copy the necessary include and library files from the downloaded SNPE SDK to the plugin. Use it as follows:
@@ -59,7 +59,7 @@ By the end of this tutorial, you’ll be equipped to integrate your own neural n
 
 Now you will need to convert the model to dlc. If you want the better performance, you will need to quantize the model as well.
 
-- Go to WSL. Make sure you have the environment variables pointing to the SNPE directories by running: 
+- Go to WSL. Make sure you have the environment variables pointing to the SNPE directories by running:
 
 ```sh
 > source .[PATH_TO_SNPE_DIRECTORY]/bin/envsetup.sh
@@ -107,7 +107,7 @@ void UHandTrackingSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 }
 ```
 
-The LoadObject reads the model from the ModelData on your content. Remember to replace the suggested path to your actual path to the model on your content directory. 
+The LoadObject reads the model from the ModelData on your content. Remember to replace the suggested path to your actual path to the model on your content directory.
 
 Qualcomm's runtime inherits from **INNERuntimeCPU**, so you can retrieve it by name, with the GetRuntime function.
 
@@ -210,7 +210,7 @@ void UHandTrackingSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		//setup input bindings
 		InputBinding.SetNum(1);
 		InputBinding[0] = { .Data = rawPixels.GetData(), .SizeInBytes = rawPixels.Num() * sizeof(float) };
-		
+
 		// allocate output buffers, setup output bindings
 		const auto& OutputTensorDescs = ModelInstance->GetOutputTensorDescs();
 		int NumOutputs = OutputTensorDescs.Num();
@@ -251,7 +251,7 @@ void UHandTrackingSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 ### Run Inference
 
-Inference is performed in the function 
+Inference is performed in the function
 ````
 void UHandTrackingSubsystem::Process(UTextureRenderTarget2D* renderTarget2D).
 ````
@@ -280,7 +280,7 @@ if (renderTarget2D != nullptr)
 }
 ```
 
-Compile and build your project. 
+Compile and build your project.
 
 ## Running the project
 

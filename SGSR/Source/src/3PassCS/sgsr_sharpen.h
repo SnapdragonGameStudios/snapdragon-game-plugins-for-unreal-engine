@@ -1,3 +1,8 @@
+// Copyright (c) Qualcomm Innovation Center, Inc. All rights reserved.
+// SPDX-License-Identifier: BSD-3-Clause AND MIT
+// Based on FidelityFX FSR RCAS. Copyright (c) 2021 Advanced Micro Devices, Inc.
+// See ../../../Licenses/LICENSE-FidelityFX-FSR1.txt for the MIT license.
+
 Texture2D<half4> Input;
 RWTexture2D<half4> UpscaledOutput;
 float Sharpness;

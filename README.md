@@ -1,176 +1,94 @@
-# SGSR UE Plugin
-UE Plugin for Snapdragon Game Super Resolution, supporting UE 5.0-5.8
+# Snapdragon Game Super Resolution Unreal Engine plugin
 
-## Build SGSR in UE
-This release contains 3 methods of SGSR:<br/>
-- Spatial Upscaler
-- Temporal Upscaler 
-  - 2 pass fragment shader
-  - 3 pass compute shader
-1) Push folder "SGSR" into folder "Plugins" of UE5 engine source code(Engine\Plugins\Runtime\Qualcomm), or project plugin folder.
-2) Apply the patch under folder "Patches" to UE5 engine source code if needed. Patches are needed for:
-   - UE5.3
-   - UE5.4
-   - UE5.5
-3) Build the engine or project.
+This plugin provides spatial and temporal upscaling for UE 5.0 through 5.8. Choose one method for the renderer:
 
+| `r.SGSR.Method` | Method |
+|---|---|
+| `0` | Spatial upscaling |
+| `1` | Temporal upscaling with two fragment passes |
+| `2` | Temporal upscaling with three compute passes |
 
-## Enable SGSR in UE
-In UE5 Editor:
-```
-In "Plugins" tab, enable SGSR:
-	"Installed" -> "Rendering" -> "SGSR": Enabled
-In "Project Settings" tab, open "Plugins - Snapdragon Game Super Resolution",
-    General Settings:
-        r.SGSR.Enabled(refer to SGSRTUViewExtension.cpp): enabled by default.
-```
-By command line(on fly):
-```
-r.SGSR.Enabled 1
-```
-Enable SGSR Spatial Upscaling: <br/>
-```
-Editor:
-In "Project Settings" tab, open "Plugins - Snapdragon Game Super Resolution",
-    General Settings:
-        Upscaling Method: "Spatial Upscaling".
+## Install
 
-Command line:
-	r.SGSR.Method 0
-```
-Enable SGSR Temporal Upscaling: <br/>
+1. Copy `SGSR/` into the project's `Plugins/` directory or `Engine/Plugins/Runtime/Qualcomm/`.
+2. Apply the matching patch under `SGSR/Patches/` when using UE 5.3, 5.4, or 5.5.
+3. Regenerate project files and build the engine or project.
+4. Enable SGSR in the Editor's Plugins window.
 
-```
-Editor:
-In "Project Settings" tab, apply following configs
-	"Engine - Rendering" -> "Mobile" -> "Mobile Anti-Aliasing Method"-> "Mobile Anti-Aliasing Method(TAA)"
-	"Engine - Rendering" -> "Mobile" -> "Supports desktop Gen4 TAA on mobile": enable
-	"Engine - Rendering" -> "Default Settings" -> "Temporal Upsampling": enable
-	"Engine - Rendering" -> "Default Settings" -> "Anti-Aliasing Method": TemporalAA
+Use the Android SDK, NDK, and Java versions required by the selected engine branch. The plugin's previous build notes used these combinations; verify them against the engine installation:
 
-Command line:
-	2 pass fragment shader: r.SGSR.Method 1
-	3 pass compute shader: r.SGSR.Method 2
-```
-In Engine\Config\BaseDeviceProfiles.ini:
-	set CVars=r.MobileContentScaleFactor=0.0 to [Android_Mid DeviceProfile] and [Android_High DeviceProfile]
-	
+| UE version | Android SDK | NDK | Java |
+|---|---|---|---|
+| 5.0 | 32 | 21.4.7075529 | 8 |
+| 5.1 | 32 | 25.2.9519653 | 8 |
+| 5.2 | 32 | 25.1.8937393 | 8 |
+| 5.3 through 5.5 | 33 | 25.1.8937393 | 17 |
+| 5.6 | 34 | 25.1.8937393 | 17 |
+| 5.7 and 5.8 | 34 | 27.2.12479018 | 21 |
 
-In SGSR Settings Panel:
-```
-In "Project Settings" tab, open "Plugins - Snapdragon Game Super Resolution",
-General Quality Setting:
-        r.SGSR.Quality(refer to SGSRTU.cpp): Quality mode. Default is 1(Quality: 1.5x).
-            Available:
-                0 - Ultra Quality 		1.25x  ScreenPercentage 80%
-                1 - Quality 			1.5x ScreenPercentage 66.7%
-                2 - Balanced 			1.7x ScreenPercentage 58.8%
-                3 - Performance 		2.0x ScreenPercentage 50%
-                4 - Custom              Input custom screen percentage to override default setting.
-        r.SGSR.CustomScreenPercentage(refer to SGSRTU.cpp): Custom screen percentage value when r.SGSR.Quality=4. Range: [50.0, 100.0]. Default is 100.
-            For example: device resoltion is 2400x1080, r.SGSR.Quality=1, will upscale from 1600x720 to 2400x1080.
+## Configure upscaling
 
-	SU Setting:
-		r.SGSR.Target(refer to SGSRSubpassScaler.cpp): Spatial Upscale target, each target is a different shader.
-			Available:
-				0 - Mobile
-				1 - High Quality
-				2 - VR
-	
+Use the Snapdragon Game Super Resolution section in Project Settings, or add settings to `DefaultEngine.ini`:
+
+```ini
+[/Script/SGSRTUModule.GSRSettings]
+r.SGSR.Enabled=1
+r.SGSR.Method=2
+r.SGSR.Quality=1
 ```
 
-## Enable SGSR on mobile
-Run project on mobile:
-```
-In "Project Settings" tab, apply following configs
-	"Platforms - Android" -> "APK Packaging" -> "Package game data inside .apk": enable
-	"Platforms - Android" -> "Build" -> "Support arm64": check
-	"Platforms - Android" -> "Build" -> "Support OpenGL ES3.1": check
-	"Platforms - Android" -> "Build" -> "Support Vulkan": check
-	"Platforms - Android" -> "Build" -> "Advanced APK Packaging" -> "Extra Permissions": add two items:
-		android.permission.READ_EXTERNAL_STORAGE
-		android.permission.WRITE_EXTERNAL_STORAGE
-```
+At runtime, use console syntax such as `r.SGSR.Method 2`. Method `2` selects the three-pass compute path; `3` is not a valid method.
 
-Make sure SGSR is enabled. If not, use the following commandline to enable.
-```
-r.SGSR.Enabled=1       
-```
-Select desired upscaling method(switching bewteen SU and TU will automatically set corresponding AA methods, no need to set it mannually):
-```
-r.SGSR.Method=1
-```
-If TAA is not set correctly for TU, then use:
-```
-r.AntiAliasingMethod=2,r.Mobile.AntiAliasing=2
-```
-Push UECommandLine.txt to `/sdcard/Android/data/com.YourCompany.[PROJECT]/files/UnrealGame/[PROJECT]/` before app starts.
+Temporal upscaling needs TAA, temporal upsampling, and the mobile Gen4 TAA support setting. Check these values in Project Settings:
 
-For instance, using TU 3pass upscale from 720p to 1080p:
-```
-r.MobileContentScaleFactor=0,r.SGSR.Enabled=1,r.SGSR.Method=3,r.SGSR.Quality=1
+```ini
+[/Script/Engine.RendererSettings]
+r.AntiAliasingMethod=2
+r.Mobile.AntiAliasing=2
+r.TemporalAA.Upsampling=1
+r.Mobile.SupportsGen4TAA=True
 ```
 
-If storage permissions required, intall .apk through Install_[PROJECT]-arm64.bat or enter the following code:
-```
-adb shell pm grant com.YourCompany.[PROJECT] android.permission.READ_EXTERNAL_STORAGE
-adb shell pm grant com.YourCompany.[PROJECT] android.permission.WRITE_EXTERNAL_STORAGE
-```
+Set `r.MobileContentScaleFactor=0` in the relevant Android device profile when using the native display resolution as the output size. Verify the effective settings on the device; device profiles can override project defaults.
 
-## Build Android for UE(workable solution)
-- Apply patch to engine source code (if needed)
-- SDK: 
-  - 5.0-5.2: Android SDK 32
-  - 5.3-5.5: Android SDK 33
-  - 5.6+: Android SDK 34
-- Android SDK Command-line Tools: 8.0
-- NDK:
-  - 5.0: 21.4.7075529
-  - 5.1: 25.2.9519653
-  - 5.2-5.6: 25.1.8937393
-  - 5.7,5.8: 27.2.12479018
-- JRE:
-  - 5.0-5.2: Java 1.8.0_242
-  - 5.3-5.6: Java 17
-  - 5.7,5.8: Java 21
-## Settings
+## Quality
 
-### General
+| `r.SGSR.Quality` | Mode | Scale per dimension | Screen percentage |
+|---|---|---|---|
+| `0` | Ultra Quality | 1.25x | 80 |
+| `1` | Quality | 1.5x | About 66.7 |
+| `2` | Balanced | 1.7x | About 58.8 |
+| `3` | Performance | 2x | 50 |
+| `4` | Custom | Selected by screen percentage | `r.SGSR.CustomScreenPercentage` |
 
-| Variant  | Console Variable        | Default Value | Value Range     | Details |
-|----------|--------------------------|---------------|------------------|---------|
-|     SU & TU  | `r.SGSR.Enabled`        | 1             | 0,1              | Enable / disable GSR. |
-|          | `r.SGSR.Method`          | 0             | 0,1,2            | Choose which variant to use. **0 = SU**, **1 = TU 2pass-fs**, **2 = TU 3pass-cs.** |
-|          | `r.SGSR.Quality`        | 1             | 0,1,2,3,4              | Choose quality: 0 = Ultra Quality, 1 = Quality, 2 = Balanced, 3 = Performance, 4 = Custom |
-|          | `r.SGSR.CustomScreenPercentage`        | 100.0             | [50.0, 100.0]              | Custom screen percentage value when r.SGSR.Quality=4 |
-|          | `r.SGSR.HalfPrecision`  | 1             | 0,1              | Enable Half Precision shader arithmetic (platform dependent). May improve performance. Requires enabling FP16 (`bSupportsRealTypes=RuntimeGuaranteed` in `Engine/Config/Android/DataDrivenPlatformInfo.ini`). |
+For custom quality, set `r.SGSR.CustomScreenPercentage` between 50 and 100. The default is 100. Quality mode `1` reconstructs a 2400 by 1080 output from a 1600 by 720 input.
 
----
+## Settings reference
 
-### Spatial Upscaler
+| Setting | Default | Use |
+|---|---|---|
+| `r.SGSR.Enabled` | `1` | Enable or disable SGSR |
+| `r.SGSR.Method` | `0` | Select method 0, 1, or 2 |
+| `r.SGSR.Quality` | `1` | Select quality 0 through 4 |
+| `r.SGSR.HalfPrecision` | `1` | Use half precision when supported |
+| `r.SGSR.Target` | `0` | Spatial shader target: 0 mobile, 1 high quality, 2 VR |
+| `r.SGSR.5Sample` | `1` | Temporal filter: 0 uses nine samples, 1 uses five |
+| `r.SGSR.LanczosOpt` | `0` | Two-pass temporal Lanczos option |
+| `r.SGSR.ThinFeature` | `0` | Two-pass thin-feature option |
+| `r.SGSR.DoSharpening` | `0` | Add sharpening to the three-pass path |
+| `r.SGSR.Sharpness` | `1.12` | Three-pass sharpening strength, 0 through 1.3 |
+| `r.SGSR.PixelLock` | `0` | Three-pass thin-feature option |
 
-| Variant  | Console Variable        | Default Value | Value Range     | Details |
-|----------|--------------------------|---------------|------------------|---------|
-|     SU   | `r.SGSR.Target`        | 0             | 0,2              | Choose target: 0 = Mobile, 1 = High Quality, 2 = VR |
+The half-precision path requires platform FP16 support. Check `bSupportsRealTypes` in the engine's Android platform configuration before enabling it.
 
----
+## Android validation
 
-### Temporal Upscaler 
-- **2pass-fs**
+Build for ARM64 and enable the rendering API used by the project. Package and install using the engine's generated deployment scripts. Enable only the storage permissions required by the application's deployment method.
 
-| Variant  | Console Variable        | Default Value | Value Range     | Details |
-|----------|--------------------------|---------------|------------------|---------|
-| 2pass-fs | `r.SGSR.5Sample`        | 1             | 0,1              | Controls sample number: 0 = 9 samples (better quality), 1 = 5 samples (better performance, default). |
-|          | `r.SGSR.LanczosOpt`     | 0             | 0,1              | Use improved Lanczos sampler to reduce flicker. |
-|          | `r.SGSR.ThinFeature`    | 0             | 0,1              | Detect and preserve thin features to suppress flicker. |
+Inspect the effective method, quality, input size, and output size on the device. Compare moving objects and camera motion when validating temporal inputs. Test the spatial path separately from both temporal variants.
 
----
+## License
 
-- **3pass-cs**
+Applicable source uses the [BSD 3-Clause License](LICENSE). Preserve any additional notices in bundled shaders and dependencies. See the [standalone SGSR repository](https://github.com/SnapdragonGameStudios/snapdragon-gsr) for technique documentation.
 
-| Variant  | Console Variable        | Default Value | Value Range     | Details |
-|----------|--------------------------|---------------|------------------|---------|
-| 3pass-cs | `r.SGSR.5Sample`        | 1             | 0,1              | Controls sample number: 0 = 9 samples (better quality), 1 = 5 samples (better performance, default). |
-|          | `r.SGSR.DoSharpening`   | 0             | 0,1              | Add a sharpening pass. |
-|          | `r.SGSR.Sharpness`      | 1.12          | [0.0, 1.3]            | Adjust sharpening strength. |
-|          | `r.SGSR.PixelLock`      | 0             | 0,1              | Detect and preserve thin features. |
+AMD-derived temporal shaders also carry MIT terms. See the [third-party notices](SGSR/THIRD-PARTY-NOTICES.txt).

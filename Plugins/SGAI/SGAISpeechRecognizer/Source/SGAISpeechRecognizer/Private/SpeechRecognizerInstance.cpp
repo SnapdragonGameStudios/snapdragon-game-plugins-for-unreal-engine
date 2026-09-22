@@ -1,3 +1,6 @@
+// Copyright (c) Qualcomm Innovation Center, Inc. All rights reserved.
+// SPDX-License-Identifier: BSD-3-Clause
+
 #include "SpeechRecognizer.h"
 #if PLATFORM_WINDOWS
 #define WIN32_LEAN_AND_MEAN

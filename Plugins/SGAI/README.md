@@ -1,65 +1,31 @@
 # Snapdragon™ Game AI
 
-Snapdragon™ Game AI SDK empowers game developers to put advanced on-device AI capabilities directly into their mobile and PC games.
+Snapdragon™ Game AI provides Unreal Engine plugins for speech recognition, LLM inference, and text-to-speech. Runtime SDKs and model artifacts are obtained separately.
 
-![Snapdragon™ Game AI](media/sgai.png)
+## Plugins
 
-## 🎮 Overview
+| Plugin | Purpose |
+|---|---|
+| [Speech recognizer](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.6/Plugins/SGAI/SGAISpeechRecognizer) | Convert captured speech to text using the Voice AI SDK |
+| [LLM pipelines](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.6/Plugins/SGAI/SGAILLMPipelines) | Run Genie conversations, tools, embeddings, and retrieval |
+| [Text-to-speech](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.6/Plugins/SGAI/SGAITextToSpeech) | Synthesize speech on Android with the Voice AI TTS SDK |
+| [QAIRT](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.6/Plugins/SGAI/qairt) | Package the Qualcomm AI Runtime libraries |
 
-The Snapdragon Game AI SDK provides a comprehensive suite of on-device AI features optimized for real-time game scenarios. These features are currently enabled through Unreal Engine 5 plugins:
+## Getting started
 
-- [Speech Recognizer](#sgaispeechrecognizer)
-- [LLM Pipelines](#sgaillmpipelines)
-- [Text to Speech](#sgaitexttospeech)
+1. Choose `engine/5.6` or `engine/5.7` to match the project. Clone that branch with submodules:
 
-
-## 📦 Plugins
-
-### **SGAISpeechRecognizer**
-*Available Engine Versions:*
-| [5.6](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.6/Plugins/SGAI/SGAISpeechRecognizer) |
-|---|
-
-
-Transform player voice input into text with real-time speech recognition. 
-- Real-time voice-to-text conversion
-- NPU accelerated inference using Qualcomm's Voice AI SDK
-
-### **SGAILLMPipelines**
-*Available Engine Versions:* 
-| [5.6](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.6/Plugins/SGAI/SGAILLMPipelines) |
-|---|
-
-Integrate large language models into your game for dynamic, context-aware AI interactions. 
-- Seamless LLM integration in Unreal Engine
-- NPU accelerated LLM inference using Qualcomm's GenIE SDK.
-
-### **SGAITextToSpeech**
-*Available Engine Versions:*
-| [5.6](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.6/Plugins/SGAI/SGAITextToSpeech) |
-|---|
-
-Bring your game characters to life with natural-sounding, AI-generated speech.
-- Real-time audio generation
-- NPU accelerated inference using Qualcomm's Voice AI SDK
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Unreal Engine 5.6 or later
-- Qualcomm Snapdragon-powered device
-
-### Installation
-
-1. Download the Snapdragon Game AI plugin package
-````
+```powershell
 git clone --branch engine/5.6 --recurse-submodules https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine.git
+```
 
+2. Copy the selected plugin and its dependencies from `Plugins/SGAI/` into the project's `Plugins/` directory.
+3. Follow each plugin's guide to install the required SDK, copy runtime libraries, and prepare a compatible model.
+4. Enable the plugins in Unreal Editor, regenerate project files, and build the project.
+5. Test on the intended platform. NPU execution requires supported hardware and model artifacts compiled for that target.
 
-````
-2. Copy the plugins to your Unreal Engine project's `Plugins` folder
-3. Enable the desired plugins in your project settings
+The links above show the UE 5.6 guides. When working on UE 5.7, use the corresponding files in that branch.
 
-## 📄 License
-Check out the [LICENSE](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/blob/main/LICENSE) for more details.
+## License
+
+Applicable plugin source uses the [repository license](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/blob/main/LICENSE). Qualcomm SDKs, runtime libraries, models, and third-party dependencies retain their own license and notice requirements.

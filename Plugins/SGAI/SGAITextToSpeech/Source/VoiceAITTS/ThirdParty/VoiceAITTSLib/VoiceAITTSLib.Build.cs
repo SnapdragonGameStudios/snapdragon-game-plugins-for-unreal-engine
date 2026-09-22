@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BSD-3-Clause
+
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // All rights reserved.
 
@@ -12,15 +14,12 @@ public class VoiceAITTSLib : ModuleRules
 
 		if (Target.Platform == UnrealTargetPlatform.Android)
 		{
-			string PluginPath = Utils.MakePathRelativeTo(ModuleDirectory, Target.RelativeEnginePath);
-			string ThirdPartyPath = Path.Combine(PluginPath, "..", "..", "ThirdParty", "VoiceAILibTTS", "Android");
+			string ThirdPartyPath = Path.Combine(ModuleDirectory, "libs", "android");
 
-			// Add the JAR file
-			string JarPath = Path.Combine(ThirdPartyPath, "libs", "tts-sdk.jar");
-			PublicAdditionalLibraries.Add(JarPath);
+			// AndroidPackaging.xml adds tts-sdk.jar to Gradle dependencies.
 
 			// Add native libraries for arm64-v8a
-			string LibPath = Path.Combine(ThirdPartyPath, "libs", "arm64-v8a");
+			string LibPath = Path.Combine(ThirdPartyPath, "arm64-v8a");
 			PublicAdditionalLibraries.Add(Path.Combine(LibPath, "libtts.so"));
 			PublicAdditionalLibraries.Add(Path.Combine(LibPath, "libtts_jni.so"));
 

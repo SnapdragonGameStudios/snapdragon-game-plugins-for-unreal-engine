@@ -3,7 +3,7 @@ Example project for **Qualcomm™ NPE Plugin** plugin.
 ## Setup
 ### Install Qualcomm™ NPE Plugin
 
-1. Run the `SNPELibrarySetup.bat` batch file to set up the `plugin` folder - see [the plugin's README](../../../Plugins/SNPE/README.md)
+1. Run the `SNPELibrarySetup.bat` batch file to set up the `plugin` folder - see [the plugin's README](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/blob/engine/5.4/Plugins/SNPE/README.md)
 2. Copy the plugin into ```.\Plugins``` folder
 ``` bat
 xcopy ..\..\..\Plugins\SNPE\ .\Plugins\SNPE\ /E

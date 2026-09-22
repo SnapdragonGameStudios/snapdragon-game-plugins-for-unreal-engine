@@ -1,31 +1,27 @@
 # Snapdragon Game AI - LLMPipelinesSample
 
-[![Unreal Engine](https://img.shields.io/badge/Unreal%20Engine-5.6-blue.svg)](https://www.unrealengine.com/)
-[![License](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)](../LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20x64%20%7C%20Windows%20ARM64-lightgrey.svg)](#platform-support)
+A sample Unreal Engine 5.6 project demonstrating the **LLMPipelines** plugin for integrating Large Language Models into gameplay. This sample demonstrates multi-turn conversations with optional tool calling, powered by Qualcomm's Genie framework with CPU and NPU acceleration support.
 
-A sample Unreal Engine 5.6 project demonstrating the **LLMPipelines** plugin for integrating Large Language Models into gameplay. This sample showcases multi-turn conversations with optional tool calling, powered by Qualcomm's Genie framework with CPU and NPU acceleration support.
-
-## Platform Support
+## Platform support
 
 - **Windows x64** - Full support with CPU and NPU acceleration
 - **Windows ARM64** - Emulated support via ARM64X with CPU and NPU acceleration
 
-Both platforms support Genie-compatible models with hardware-accelerated inference.
+CPU and NPU availability depends on the runtime and model. NPU execution requires supported Snapdragon hardware.
 
 ---
 
 ## Features
 
-✨ **Multi-turn Conversations** - Natural dialogue with context retention across multiple exchanges
+ **Multi-turn Conversations** - Natural dialogue with context retention across multiple exchanges
 
-🔧 **Tool Calling & Execution** - LLMs can invoke Blueprint-implemented tools (e.g., controlling lights, querying game state)
+ **Tool Calling & Execution** - LLMs can invoke Blueprint-implemented tools (e.g., controlling lights, querying game state)
 
-🎮 **Blueprint Component Integration** - Drop-in components (`BPC_LLM_Chat`, `BPC_LLM_RAG`) for easy integration into any project
+ **Blueprint Component Integration** - Drop-in components (`BPC_LLM_Chat`, `BPC_LLM_RAG`) for easy integration into any project
 
-🚀 **Hardware Acceleration** - CPU and NPU accelerated inference via Qualcomm Genie
+ **Hardware Acceleration** - CPU and NPU accelerated inference via Qualcomm Genie
 
-📚 **RAG Support** - Reference implementation for Retrieval-Augmented Generation workflows (embeddings + vector DB)
+ **RAG Support** - Reference implementation for Retrieval-Augmented Generation workflows (embeddings + vector DB)
 
 ---
 
@@ -41,9 +37,9 @@ Before running this sample, ensure you have:
 
 ---
 
-## Quick Start
+## Quick start
 
-### Getting Models and Configs
+### Prepare models and configuration
 
 1. **Download a Genie-compatible model** from [Qualcomm AI Hub](https://aihub.qualcomm.com/)
    - Recommended: Start with a smaller model (e.g., 1-3B parameters) for testing
@@ -57,7 +53,7 @@ Before running this sample, ensure you have:
 ![Genie Config Location](docs/images/setup/genie-config-location.png)
 *Example: Typical model folder structure with required configuration files*
 
-### Setting Model Paths
+### Set model paths
 
 You can specify the model location using either of these methods:
 
@@ -82,14 +78,14 @@ UE-LLMPipelinesSample.exe -ModelFolder="Your/Model/Folder"
 ![Command Line Parameter](docs/images/setup/model-path-commandline.png)
 *Example: Launching with command-line model path specification via Editor Preferences -> Level Editor -> Play*
 
-### Running the Sample
+### Run the sample
 
 1. **Start the game** using either method above
 2. **Wait for initialization** - The chat system will initialize in the background (watch for green on-screen messages)
 3. **Approach an NPC** - Walk up to one of the interactive stations
 4. **Press the interaction key** to begin
 
-### Sample Stations
+### Sample stations
 
 The sample includes two demonstration stations showcasing different capabilities:
 
@@ -114,14 +110,14 @@ An AI with tool-calling capabilities that can control the environment.
 ![Station 2 Tools Demo](docs/images/gameplay/station2-tools-demo-part2.png)
 *The Engineer AI controlling lights through tool calls at Station 2*
 
-#### Interaction Notes
+#### Interaction notes
 
 - **Close Button**: Hitting the Close button will **abort** any ongoing LLM operation and **reset** the conversation
 - **Conversation History**: Each station maintains its own conversation context until reset
 
 ---
 
-## Blueprint Components
+## Blueprint components
 
 The sample demonstrates two main Blueprint Components that can be easily integrated into your own projects:
 
@@ -162,7 +158,7 @@ Implementing tool execution in Blueprint using the required tool call function i
 *Implementing tool call interface to handle tool calls from the LLM (the Conversation Engine input event for this was a small wrapper around the function in the diagram)*
 
 **Example: Light Control Tool** (from Station 2)
-```
+```text
 Tool Name: "toggle_light"
 Parameters: {"light_color": "red", "state": "on"}
 Execution: Find selected light → Set intensity

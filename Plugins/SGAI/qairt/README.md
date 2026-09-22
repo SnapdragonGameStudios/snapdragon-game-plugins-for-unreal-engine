@@ -1,36 +1,16 @@
-#  Qualcomm’s AI RunTime (aka “QAIRT”)
+# Qualcomm AI Runtime plugin
 
-<div align="center">
+This plugin packages Qualcomm AI Runtime binaries for Unreal plugins that use the Qualcomm AI Engine Direct SDK or Genie. Qualcomm® AI accelerators include the Qualcomm® Kryo™ CPU, Qualcomm® Adreno™ GPU, and Qualcomm® Hexagon™ NPU. Accelerator support depends on the selected runtime, model, and target hardware.
 
-![Version](https://img.shields.io/badge/version-2.42.0-blue.svg)
-![Unreal Engine](https://img.shields.io/badge/Unreal%20Engine-5.x-informational.svg)
-![Platform](https://img.shields.io/badge/platform-Win64%20%7C%20Android-lightgrey.svg)
-![License](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)
-![NPU](https://img.shields.io/badge/NPU-Accelerated-orange.svg)
+## Set up
 
-**QAIRT is a suite of tools that help you develop, run, and optimize AI models for Qualcomm-supported hardware.** 
+1. Copy `qairt/` into the project's `Plugins/` directory or the engine's plugin directory.
+2. From the plugin directory, run `QAIRTSetup.bat`. The script downloads and extracts the SDK version named by `SDK_VERSION` in that script.
+3. To use a downloaded SDK archive, run `QAIRTSetup.bat "path-to-sdk.zip"`. Run `QAIRTSetup.bat /help` for available options.
+4. Regenerate project files and build the project. Enable this plugin and the SGAI plugins that depend on it.
 
-</div>
+The setup places SDK files under `Source/ThirdParty/qairt/`. Verify the binaries for the target platform before packaging, and test the packaged application on the target hardware.
 
+## License
 
-## Overview
-
-This plugin provides one place to host and help package the binaries that are part of Qualcomm AI Engine Direct SDK.
-
-QAIRT is a suite of tools that help you develop, run, and optimize AI models for Qualcomm-supported hardware.
-
-Developers can get one step closer to the silicon and improve the performance of their AI models on Qualcomm® AI accelerators: Qualcomm® Kryo™ CPU, Qualcomm® Adreno™ GPU and Qualcomm® Hexagon™ NPU.
-
-## Getting started
-
-### Plugin setup
-
-1. **Clone this repo** and follow the standard steps given by Unreal Engine to add this plugin as an **engine plugin** or **project plugin**.<br>
-
-2. Run QAIRTSetup.bat
-
-```console
->    cd <PATH_TO_THIS_REPO>\
->    .\QAIRTSetup.bat
-```
-
+The setup and integration source use the repository [BSD 3-Clause license](../../../LICENSE). The downloaded Qualcomm AI Runtime SDK has its own terms and notices; preserve them when distributing its binaries.

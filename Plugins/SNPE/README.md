@@ -1,4 +1,4 @@
-# Qualcomm™ NPE Plugin 
+# Qualcomm™ NPE Plugin
 
 Qualcomm™ Game Studios developed Qualcomm™ NPE Plugin, which integrates Qualcomm's Neural Processing SDK to Unreal Engine and provides C++ and blueprint functionality to load, DLC models and run inference with them using either CPU, GPU or the device's HTP.
 
@@ -16,11 +16,11 @@ Qualcomm™ Game Studios developed Qualcomm™ NPE Plugin, which integrates Qual
 	**- copy** the contents of *"\AIStack\SNPE\[version]\include\lib\aarch64-windows-msvc"* to *"[project path]\plugins\SNPE\Source\ThirdParty\SNPELibrary\lib\"*
 	**- copy** the files *msvcp140.dll* and *vcruntime140.dll* (this must be supplied with your VS installation) to *"[project path]\plugins\SNPE\Source\ThirdParty\SNPELibrary\lib\aarch64-windows-msvc\"*
 8. To run on DSP, HTP you need to **copy** the content of the specific library of your device to *"[project path]\plugins\SNPE\Source\ThirdParty\SNPELibrary\lib\dsp\"* those can be *"\AIStack\SNPE\[version]\include\lib\[hexagon-v73 | hexagon-v68 | hexagon-v66]"*. But if you are not sure of the model you can copy the content of the 3 directories.
-9. Your *"[project path]\plugins\SNPE\Source\ThirdParty\SNPELibrary\lib\"* must now look like:<br><br>
+9. Your *"[project path]\plugins\SNPE\Source\ThirdParty\SNPELibrary\lib\"* must now look like:
 <img src="Media/SNPE_Directory.jpg" width="500" height="500" />
 
 More information can be found at [SNPE UE plugin blueprint reference.pdf](https://github.com/quic/snapdragon-game-plugins-for-unreal-engine/blob/engine/5.3/Plugins/SNPE/SNPE%20UE%20plugin%20blueprint%20reference.pdf).
 
 # License
 
-Snapdragon™ Game Super Resolution is licensed under the BSD 3-clause “New” or “Revised” License. Check out the [LICENSE](LICENSE) for more details.
+The plugin source is covered by the repository [BSD 3-Clause license](../../LICENSE). The separately installed Qualcomm Neural Processing SDK has its own license terms.

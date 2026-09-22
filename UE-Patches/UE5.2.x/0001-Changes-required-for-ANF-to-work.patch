@@ -1,0 +1,183 @@
+diff --git a/Engine/Source/Runtime/Renderer/Private/PostProcess/PostProcessEyeAdaptation.cpp b/Engine/Source/Runtime/Renderer/Private/PostProcess/PostProcessEyeAdaptation.cpp
+index df9278b12cbf..fa46fe44808f 100644
+--- a/Engine/Source/Runtime/Renderer/Private/PostProcess/PostProcessEyeAdaptation.cpp
++++ b/Engine/Source/Runtime/Renderer/Private/PostProcess/PostProcessEyeAdaptation.cpp
+@@ -578,7 +578,7 @@ public:
+ 
+ 		static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+ 	{
+-		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
++			return true;
+ 	}
+ };
+ 
+diff --git a/Engine/Source/Runtime/Renderer/Private/SceneVisibility.cpp b/Engine/Source/Runtime/Renderer/Private/SceneVisibility.cpp
+index 7ce6a8ef40f3..c2796f29643b 100644
+--- a/Engine/Source/Runtime/Renderer/Private/SceneVisibility.cpp
++++ b/Engine/Source/Runtime/Renderer/Private/SceneVisibility.cpp
+@@ -3936,7 +3936,42 @@ void FSceneRenderer::PreVisibilityFrameSetup(FRDGBuilder& GraphBuilder, const FS
+ 			View.TemporalJitterPixels.X = SampleX;
+ 			View.TemporalJitterPixels.Y = SampleY;
+ 
+-			View.ViewMatrices.HackAddTemporalAAProjectionJitter(FVector2D(SampleX * 2.0f / View.ViewRect.Width(), SampleY * -2.0f / View.ViewRect.Height()));
++			static auto CANFVar = IConsoleManager::Get().FindConsoleVariable(TEXT("r.ANF.Enabled"));
++			const bool anfEnabled = CANFVar != nullptr && CANFVar->GetInt() != 0;
++			static auto CANFPatternCVar = IConsoleManager::Get().FindConsoleVariable(TEXT("r.ANF.UseJitterPattern"));
++			const bool anfusePattern = CANFPatternCVar != nullptr && CANFPatternCVar->GetInt() != 0;
++
++			if (anfEnabled && anfusePattern)
++			{
++				auto ANFHalton = [](int32 Index, int32 Base)
++					{
++						Index = (Index + 1) % 16 + 1;
++						float Result = 0.0f;
++						float InvBase = 1.0f / float(Base);
++						float Fraction = InvBase;
++						while (Index > 0)
++						{
++							Result += float(Index % Base) * Fraction;
++							Index /= Base;
++							Fraction *= InvBase;
++						}
++						return Result;
++					};
++
++				int32_t sampleIndex = View.TemporalJitterIndex;
++
++				SampleX = ANFHalton(sampleIndex + 1, 2) - 0.5f;
++				SampleY = ANFHalton(sampleIndex + 1, 3) - 0.5f;
++
++				View.TemporalJitterPixels.X = SampleX;
++				View.TemporalJitterPixels.Y = SampleY;
++
++				View.ViewMatrices.HackAddTemporalAAProjectionJitter(FVector2D(SampleX * -2.0f / View.ViewRect.Width(), SampleY * -2.0f / View.ViewRect.Height()));
++			}
++			else
++			{
++				View.ViewMatrices.HackAddTemporalAAProjectionJitter(FVector2D(SampleX * 2.0f / View.ViewRect.Width(), SampleY * -2.0f / View.ViewRect.Height()));
++			}
+ 		}
+ 
+ 		// Setup a new FPreviousViewInfo from current frame infos.
+diff --git a/Engine/Source/Runtime/VulkanRHI/Private/Android/VulkanPlatformDefines.h b/Engine/Source/Runtime/VulkanRHI/Private/Android/AndroidVulkanPlatformDefines.h
+similarity index 100%
+rename from Engine/Source/Runtime/VulkanRHI/Private/Android/VulkanPlatformDefines.h
+rename to Engine/Source/Runtime/VulkanRHI/Private/Android/AndroidVulkanPlatformDefines.h
+diff --git a/Engine/Source/Runtime/VulkanRHI/Private/Linux/VulkanPlatformDefines.h b/Engine/Source/Runtime/VulkanRHI/Private/Linux/LinuxVulkanPlatformDefines.h
+similarity index 100%
+rename from Engine/Source/Runtime/VulkanRHI/Private/Linux/VulkanPlatformDefines.h
+rename to Engine/Source/Runtime/VulkanRHI/Private/Linux/LinuxVulkanPlatformDefines.h
+diff --git a/Engine/Source/Runtime/VulkanRHI/Private/Mac/VulkanPlatformDefines.h b/Engine/Source/Runtime/VulkanRHI/Private/Mac/MacVulkanPlatformDefines.h
+similarity index 100%
+rename from Engine/Source/Runtime/VulkanRHI/Private/Mac/VulkanPlatformDefines.h
+rename to Engine/Source/Runtime/VulkanRHI/Private/Mac/MacVulkanPlatformDefines.h
+diff --git a/Engine/Source/Runtime/VulkanRHI/Private/VulkanContext.h b/Engine/Source/Runtime/VulkanRHI/Private/VulkanContext.h
+index 1af0df565aae..01fdc9091f2f 100644
+--- a/Engine/Source/Runtime/VulkanRHI/Private/VulkanContext.h
++++ b/Engine/Source/Runtime/VulkanRHI/Private/VulkanContext.h
+@@ -19,7 +19,7 @@ class FVulkanSwapChain;
+ 
+ struct FInputAttachmentData;
+ 
+-class FVulkanCommandListContext : public IRHICommandContext
++class VULKANRHI_API FVulkanCommandListContext : public IRHICommandContext
+ {
+ public:
+ 	FVulkanCommandListContext(FVulkanDynamicRHI* InRHI, FVulkanDevice* InDevice, FVulkanQueue* InQueue, FVulkanCommandListContext* InImmediate);
+diff --git a/Engine/Source/Runtime/VulkanRHI/Private/VulkanPlatform.h b/Engine/Source/Runtime/VulkanRHI/Private/VulkanPlatform.h
+index e6f0f8d761a9..953db55e4eeb 100644
+--- a/Engine/Source/Runtime/VulkanRHI/Private/VulkanPlatform.h
++++ b/Engine/Source/Runtime/VulkanRHI/Private/VulkanPlatform.h
+@@ -3,4 +3,5 @@
+ 
+ #pragma once
+ 
+-#include "VulkanPlatformDefines.h"
+\ No newline at end of file
++#include "HAL/PreprocessorHelpers.h"
++#include COMPILED_PLATFORM_HEADER(VulkanPlatformDefines.h)
+diff --git a/Engine/Source/Runtime/VulkanRHI/Private/VulkanSwapChain.cpp b/Engine/Source/Runtime/VulkanRHI/Private/VulkanSwapChain.cpp
+index 38669b31ee03..9b7dba2a0710 100644
+--- a/Engine/Source/Runtime/VulkanRHI/Private/VulkanSwapChain.cpp
++++ b/Engine/Source/Runtime/VulkanRHI/Private/VulkanSwapChain.cpp
+@@ -12,6 +12,9 @@
+ #include "IHeadMountedDisplayModule.h"
+ #include "IHeadMountedDisplayVulkanExtensions.h"
+ 
++ETextureCreateFlags FVulkanSwapChain::sExtraBackbufferUsageFlags = ETextureCreateFlags::None;
++VkImageUsageFlags FVulkanSwapChain::sExtraBackbufferVkUsageFlags = 0x0;
++
+ #if PLATFORM_ANDROID
+ // this path crashes within libvulkan during vkDestroySwapchainKHR on some versions of Android. See FORT-250079
+ int32 GVulkanKeepSwapChain = 0;
+@@ -466,6 +469,10 @@ FVulkanSwapChain::FVulkanSwapChain(VkInstance InInstance, FVulkanDevice& InDevic
+ 	SwapChainInfo.imageExtent.width = SizeX;
+ 	SwapChainInfo.imageExtent.height = SizeY;
+ 	SwapChainInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
++	if (GVulkanDelayAcquireImage != EDelayAcquireImageType::DelayAcquire) // App will have direct swapchain image access
++	{
++		SwapChainInfo.imageUsage |= sExtraBackbufferVkUsageFlags;
++	}
+ 	SwapChainInfo.preTransform = PreTransform;
+ 	SwapChainInfo.imageArrayLayers = 1;
+ 	SwapChainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+diff --git a/Engine/Source/Runtime/VulkanRHI/Private/VulkanSwapChain.h b/Engine/Source/Runtime/VulkanRHI/Private/VulkanSwapChain.h
+index 2c6a9ce3ce84..191771250ab0 100644
+--- a/Engine/Source/Runtime/VulkanRHI/Private/VulkanSwapChain.h
++++ b/Engine/Source/Runtime/VulkanRHI/Private/VulkanSwapChain.h
+@@ -46,6 +46,17 @@ public:
+ 	const FVulkanTextureView* GetOrCreateQCOMDepthView(const FVulkanTexture& InSurface) const;
+ 	const FVulkanTexture* GetQCOMDepthStencilSurface() const;
+ 
++	VULKANRHI_API static inline void SetExtraBackbufferUsageFlags(ETextureCreateFlags extraFlags, VkImageUsageFlags extraVkFlags)
++	{
++		sExtraBackbufferUsageFlags |= extraFlags;
++		sExtraBackbufferVkUsageFlags |= extraVkFlags;
++	}
++
++	VULKANRHI_API static inline ETextureCreateFlags GetExtraBackbufferUsageFlags()
++	{
++		return sExtraBackbufferUsageFlags;
++	}
++
+ protected:
+ 	VkSurfaceTransformFlagBitsKHR QCOMRenderPassTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+ 	VkFormat ImageFormat = VK_FORMAT_UNDEFINED;
+@@ -79,6 +90,9 @@ protected:
+ 
+ 	uint32 PresentID = 0;
+ 
++	static ETextureCreateFlags sExtraBackbufferUsageFlags;
++	static VkImageUsageFlags sExtraBackbufferVkUsageFlags;
++
+ 	int32 AcquireImageIndex(VulkanRHI::FSemaphore** OutSemaphore);
+ 
+ 	// WA: if the swapchain pass uses a depth target, it must have same size as the swapchain images.
+diff --git a/Engine/Source/Runtime/VulkanRHI/Private/VulkanViewport.cpp b/Engine/Source/Runtime/VulkanRHI/Private/VulkanViewport.cpp
+index e83cdc6b27b0..b346314e9593 100644
+--- a/Engine/Source/Runtime/VulkanRHI/Private/VulkanViewport.cpp
++++ b/Engine/Source/Runtime/VulkanRHI/Private/VulkanViewport.cpp
+@@ -694,10 +694,18 @@ void FVulkanViewport::CreateSwapchain(FVulkanSwapChainRecreateInfo* RecreateInfo
+ 		uint32 BackBufferSizeX = RequiresRenderingBackBuffer() ? SizeX : 1;
+ 		uint32 BackBufferSizeY = RequiresRenderingBackBuffer() ? SizeY : 1;
+ 
++		const UE::StereoRenderUtils::FStereoShaderAspects Aspects(GMaxRHIShaderPlatform);
++
++		ETextureCreateFlags backbufferFlags = ETextureCreateFlags::RenderTargetable | ETextureCreateFlags::ShaderResource | ETextureCreateFlags::ResolveTargetable;
++		if (GVulkanDelayAcquireImage == EDelayAcquireImageType::DelayAcquire)
++		{
++			backbufferFlags |= FVulkanSwapChain::GetExtraBackbufferUsageFlags();
++		}
++
+ 		const FRHITextureCreateDesc Desc =
+ 			FRHITextureCreateDesc::Create2D(TEXT("RenderingBackBuffer"), BackBufferSizeX, BackBufferSizeY, PixelFormat)
+ 			.SetClearValue(FClearValueBinding::None)
+-			.SetFlags(ETextureCreateFlags::RenderTargetable | ETextureCreateFlags::ShaderResource | ETextureCreateFlags::ResolveTargetable)
++			.SetFlags(backbufferFlags)
+ 			.SetInitialState(ERHIAccess::Present);
+ 
+ 		RenderingBackBuffer = new FVulkanTexture(*Device, Desc, nullptr);
+diff --git a/Engine/Source/Runtime/VulkanRHI/Private/Windows/VulkanPlatformDefines.h b/Engine/Source/Runtime/VulkanRHI/Private/Windows/WindowsVulkanPlatformDefines.h
+similarity index 100%
+rename from Engine/Source/Runtime/VulkanRHI/Private/Windows/VulkanPlatformDefines.h
+rename to Engine/Source/Runtime/VulkanRHI/Private/Windows/WindowsVulkanPlatformDefines.h

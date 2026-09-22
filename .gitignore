@@ -75,3 +75,13 @@ DerivedDataCache/*
 
 # Debug symbols
 *.pdb
+
+# UE generated ANF files
+ANF/Binaries/
+ANF/Intermediate/
+ANF/.vscode/
+
+# Internal agent guidance
+AGENTS.md
+CLAUDE.md
+.skills/

@@ -1,0 +1,119 @@
+diff --git a/Engine/Source/Runtime/Renderer/Private/VelocityRendering.cpp b/Engine/Source/Runtime/Renderer/Private/VelocityRendering.cpp
+index 0b868f243a89..65562acd7993 100644
+--- a/Engine/Source/Runtime/Renderer/Private/VelocityRendering.cpp
++++ b/Engine/Source/Runtime/Renderer/Private/VelocityRendering.cpp
+@@ -52,6 +52,12 @@ static TAutoConsoleVariable<int32> CVarParallelVelocity(
+ 	TEXT("Toggles parallel velocity rendering. Parallel rendering must be enabled for this to have an effect."),
+ 	ECVF_RenderThreadSafe
+ 	);
++static TAutoConsoleVariable<int32> CVarAlwaysRenderVelocity(
++	TEXT("r.AlwaysRenderVelocity"),
++	1,
++	TEXT("Force to use velocity\n"),
++	ECVF_ReadOnly | ECVF_RenderThreadSafe);
++
+ 
+ static TAutoConsoleVariable<int32> CVarRHICmdFlushRenderThreadTasksVelocityPass(
+ 	TEXT("r.RHICmdFlushRenderThreadTasksVelocityPass"),
+@@ -174,6 +180,11 @@ DECLARE_CYCLE_STAT(TEXT("Velocity"), STAT_CLP_Velocity, STATGROUP_ParallelComman
+ 
+ bool FDeferredShadingSceneRenderer::ShouldRenderVelocities() const
+ {
++	if (CVarAlwaysRenderVelocity.GetValueOnAnyThread() != 0)
++	{
++		return true;
++	}
++
+ 	if (!FVelocityRendering::IsVelocityPassSupported(ShaderPlatform) || ViewFamily.UseDebugViewPS())
+ 	{
+ 		return false;
+@@ -214,6 +225,11 @@ bool FDeferredShadingSceneRenderer::ShouldRenderVelocities() const
+ 
+ bool FMobileSceneRenderer::ShouldRenderVelocities() const
+ {
++	if (CVarAlwaysRenderVelocity.GetValueOnAnyThread() != 0)
++	{
++		return true;
++	}
++
+ 	if (!FVelocityRendering::IsVelocityPassSupported(ShaderPlatform) || ViewFamily.UseDebugViewPS() || !PlatformSupportsVelocityRendering(ShaderPlatform))
+ 	{
+ 		return false;
+diff --git a/Engine/Source/Runtime/SlateCore/Public/Rendering/SlateRenderer.h b/Engine/Source/Runtime/SlateCore/Public/Rendering/SlateRenderer.h
+index e0039880fbd7..8aa6473ae802 100644
+--- a/Engine/Source/Runtime/SlateCore/Public/Rendering/SlateRenderer.h
++++ b/Engine/Source/Runtime/SlateCore/Public/Rendering/SlateRenderer.h
+@@ -10,6 +10,7 @@
+ #include "Fonts/FontTypes.h"
+ #include "Types/SlateVector2.h"
+ #include "PixelFormat.h"
++#include <functional>
+ 
+ class FRHITexture;
+ class FRenderTarget;
+@@ -273,6 +274,11 @@ public:
+ 	DECLARE_MULTICAST_DELEGATE_TwoParams( FOnSlateWindowRendered, SWindow&, void* );
+ 	FOnSlateWindowRendered& OnSlateWindowRendered() { return SlateWindowRendered; }
+ 
++	/** Callback that fires before the UI is drawn */
++	using DrawUiOnBackbufferFx = std::function<void()>;
++	DECLARE_MULTICAST_DELEGATE_SevenParams(FOnDrawUI, DrawUiOnBackbufferFx, FRHICommandListImmediate&, FTexture2DRHIRef&, FTexture2DRHIRef&, struct FViewportInfo&, bool, bool);
++	FOnDrawUI& OnDrawUI() { return DrawUI; }
++
+ 	/**
+ 	 * Called on the game thread right before the slate window handle is destroyed.  
+ 	 * This gives users a chance to release any viewport specific resources they may have active when the window is destroyed 
+@@ -581,6 +587,7 @@ protected:
+ 
+ 	/** Callback that fires after Slate has rendered each window, each frame */
+ 	FOnSlateWindowRendered SlateWindowRendered;
++	FOnDrawUI DrawUI;
+ 
+ 	FOnSlateWindowDestroyed OnSlateWindowDestroyedDelegate;
+ 	FOnPreResizeWindowBackbuffer PreResizeBackBufferDelegate;
+diff --git a/Engine/Source/Runtime/SlateRHIRenderer/Private/SlateRHIRenderer.cpp b/Engine/Source/Runtime/SlateRHIRenderer/Private/SlateRHIRenderer.cpp
+index f65487f84f4c..7fc6e262c936 100644
+--- a/Engine/Source/Runtime/SlateRHIRenderer/Private/SlateRHIRenderer.cpp
++++ b/Engine/Source/Runtime/SlateRHIRenderer/Private/SlateRHIRenderer.cpp
+@@ -1153,7 +1153,13 @@ void FSlateRHIRenderer::DrawWindow_RenderThread(FRHICommandListImmediate& RHICmd
+ 				{
+ 					RenderingPolicy->BuildRenderingBuffers(RHICmdList, BatchDataHDR);
+ 					FTexture2DRHIRef UITargetHDRRTRHI(FinalBuffer);
+-					RenderSlateBatch(UITargetHDRRTRHI, /*bClear*/ false, /*bIsHDR*/ true, ViewportInfo, ViewMatrix, BatchDataHDR, RHICmdList, ViewportWidth, ViewportHeight, DrawCommandParams, RenderingPolicy, PostProcessBuffer);
++
++					auto DrawUIOnBackBuffer = [&]()
++						{
++							RenderSlateBatch(UITargetHDRRTRHI, /*bClear*/ false, /*bIsHDR*/ true, ViewportInfo, ViewMatrix, BatchDataHDR, RHICmdList, ViewportWidth, ViewportHeight, DrawCommandParams, RenderingPolicy, PostProcessBuffer);
++						};
++					OnDrawUI().Broadcast(DrawUIOnBackBuffer, RHICmdList, UITargetHDRRTRHI, PostProcessBuffer, ViewportInfo, bRenderedStereo, DrawCommandParams.bLockToVsync);
++					DrawUIOnBackBuffer();
+ 			    }
+ 
+ 				PostProcessBuffer = FinalBuffer;
+@@ -1168,7 +1174,12 @@ void FSlateRHIRenderer::DrawWindow_RenderThread(FRHICommandListImmediate& RHICmd
+ 			ViewportInfo.ConditionallyUpdateDepthBuffer(BatchData.IsStencilClippingRequired(), ViewportInfo.DesiredWidth, ViewportInfo.DesiredHeight);
+ 
+ 		    bool bHdrTarget = ViewportInfo.bSceneHDREnabled && !bCompositeUI;
+-		    RenderSlateBatch(BackBuffer, bClear, bHdrTarget, ViewportInfo, ViewMatrix, BatchData, RHICmdList, ViewportWidth, ViewportHeight, DrawCommandParams, RenderingPolicy, PostProcessBuffer);
++			auto DrawUIOnBackBuffer = [&]()
++				{
++					RenderSlateBatch(BackBuffer, bClear, bHdrTarget, ViewportInfo, ViewMatrix, BatchData, RHICmdList, ViewportWidth, ViewportHeight, DrawCommandParams, RenderingPolicy, PostProcessBuffer);
++				};
++			OnDrawUI().Broadcast(DrawUIOnBackBuffer, RHICmdList, BackBuffer, PostProcessBuffer, ViewportInfo, bRenderedStereo, DrawCommandParams.bLockToVsync);
++			DrawUIOnBackBuffer();
+ 
+ 			if (bCompositeUI)
+ 			{
+diff --git a/Engine/Source/Runtime/VulkanRHI/Private/VulkanViewport.h b/Engine/Source/Runtime/VulkanRHI/Private/VulkanViewport.h
+index cab95a63bba5..8e8ca2bcb553 100644
+--- a/Engine/Source/Runtime/VulkanRHI/Private/VulkanViewport.h
++++ b/Engine/Source/Runtime/VulkanRHI/Private/VulkanViewport.h
+@@ -44,7 +44,7 @@ private:
+ class FVulkanViewport : public FRHIViewport, public VulkanRHI::FDeviceChild
+ {
+ public:
+-	enum { NUM_BUFFERS = 3 };
++	enum { NUM_BUFFERS = 6 };
+ 
+ 	FVulkanViewport(FVulkanDynamicRHI* InRHI, FVulkanDevice* InDevice, void* InWindowHandle, uint32 InSizeX,uint32 InSizeY,bool bInIsFullscreen, EPixelFormat InPreferredPixelFormat);
+ 	~FVulkanViewport();

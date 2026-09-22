@@ -1,0 +1,136 @@
+//============================================================================================================
+//
+//                  Copyright (c) 2026, Qualcomm Innovation Center, Inc. All rights reserved.
+//                              SPDX-License-Identifier: BSD-3-Clause
+//
+//============================================================================================================
+#include "/Engine/Private/Common.ush"
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION > 2
+#include "/Engine/Private/PackUnpack.ush"
+#endif
+
+Texture2D<float> InputDepth;
+Texture2D<float4> InputVelocity;
+Texture2D<float4> InputColor;
+
+SamplerState InputColorSampler;
+SamplerState InputVelocitySampler;
+
+RWTexture2D<float2> ANFMotionVector;
+RWTexture2D<float> ANFDepth;
+RWTexture2D<float4> ANFColor;
+
+uint2    iAnfRenderSize;
+uint2    iAnfDisplaySize;
+uint2    iUeRenderSize;
+uint2    iUeDisplaySize;
+float2   fMotionVectorJitterCancellation;
+int      projMatSign;
+float4x4 clipToPrevClip;
+
+float2 GetTextureCoords(int2 loc, uint2 ueSize, uint2 anfSize)
+{
+    float2 texSize = float2(anfSize);
+    
+    if (ueSize.x < anfSize.x)
+    {
+        texSize.x = float(ueSize.x);
+    }
+
+    if (ueSize.y < anfSize.y)
+    {
+        texSize.y = float(ueSize.y);
+    }
+    
+    return float2(loc + float2(0.5, 0.5)) / texSize;
+
+}
+
+float2 GetModelV2Velocity(float4 inVelocity, int2 InputPos, float originalDepth)
+{
+    float2 ViewportSizeInverse = 1.0 / float2(iUeRenderSize.xy);
+
+    float minDepth = originalDepth;
+    int2 minCoord = InputPos;
+
+    float4 EncodedVelocity = inVelocity;
+
+    float2 motion;
+    if (EncodedVelocity.x > 0.0)
+    {
+        motion = DecodeVelocityFromTexture(EncodedVelocity).xy;
+    }
+    else
+    {
+        float2 minUV = (float2(minCoord) + float2(0.5, 0.5)) * ViewportSizeInverse;
+        float2 minScreenPos = float2(2.0f * minUV.x - 1.0f, 1.0f - 2.0f * minUV.y);
+        float4 minPosition = float4(minScreenPos, minDepth, 1.0);
+        float4 PreClip = mul(minPosition, clipToPrevClip);
+        float2 PreScreen = PreClip.xy / PreClip.w;
+        motion = PreScreen - minScreenPos;
+
+        // Jitter compensation
+        float2 jitterComp = fMotionVectorJitterCancellation;
+        if (projMatSign < 0)
+        {
+            motion = motion - jitterComp;
+        }
+        else if (projMatSign > 0)
+        {
+            motion = motion + jitterComp;
+        }
+        motion *= -1.0;
+    }
+    
+    motion = motion * float2(0.5, -0.5);
+    
+    return motion;
+}
+
+[numthreads(TILE_SIZE_X, TILE_SIZE_Y, 1)]
+void ANFPreProcess(uint3 DispatchThreadId : SV_DispatchThreadID)
+{
+    int2 InputPos = int2(DispatchThreadId.xy);
+    UNROLL
+    for (uint yy = 0; yy < 2; ++yy)
+    {
+        UNROLL
+        for (uint xx = 0; xx < 2; ++xx)
+        {
+            int2 CurPos = int2(InputPos.x * 2 + xx, InputPos.y * 2 + yy);
+
+            // Motion vectors and depth are always in render-resolution space.
+            if (CurPos.x < int(iAnfRenderSize.x) && CurPos.y < int(iAnfRenderSize.y))
+            {
+                float2 inputCoords = GetTextureCoords(CurPos, iUeRenderSize, iAnfRenderSize);
+
+#if ANF_PREPROCESS_MOTION || ANF_PREPROCESS_DEPTH
+                float depth = InputDepth.SampleLevel(InputVelocitySampler, inputCoords, 0);
+#endif // ANF_PREPROCESS_MOTION || ANF_PREPROCESS_DEPTH
+
+#if ANF_PREPROCESS_MOTION
+                float4 velocity = InputVelocity.SampleLevel(InputVelocitySampler, inputCoords, 0);
+                ANFMotionVector[CurPos.xy] = GetModelV2Velocity(velocity, CurPos.xy, depth);
+#endif // ANF_PREPROCESS_MOTION
+
+#if ANF_PREPROCESS_DEPTH
+                ANFDepth[CurPos.xy] = depth;
+#endif // ANF_PREPROCESS_DEPTH
+
+                // SR color is in render-resolution space; write it here inside the render bounds check.
+#if ANF_PREPROCESS_COLOR && !ANF_PREPROCESS_FRAME_GEN
+                ANFColor[CurPos.xy] = InputColor.SampleLevel(InputColorSampler, inputCoords, 0);
+#endif // ANF_PREPROCESS_COLOR && !ANF_PREPROCESS_FRAME_GEN
+            }
+
+            // Frame-gen color is in display-resolution space; use a separate bounds check.
+#if ANF_PREPROCESS_COLOR && ANF_PREPROCESS_FRAME_GEN
+            if (CurPos.x < int(iAnfDisplaySize.x) && CurPos.y < int(iAnfDisplaySize.y))
+            {
+                float2 colorCoords = GetTextureCoords(CurPos, iUeDisplaySize, iAnfDisplaySize);
+                ANFColor[CurPos.xy] = InputColor.SampleLevel(InputColorSampler, colorCoords, 0);
+            }
+#endif // ANF_PREPROCESS_COLOR && ANF_PREPROCESS_FRAME_GEN
+        }
+    }
+}

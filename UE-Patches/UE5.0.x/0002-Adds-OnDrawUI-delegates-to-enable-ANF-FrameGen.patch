@@ -1,0 +1,234 @@
+diff --git a/Engine/Source/Runtime/Renderer/Private/VelocityRendering.cpp b/Engine/Source/Runtime/Renderer/Private/VelocityRendering.cpp
+index c8dca5468a24..a253c3f9faf7 100644
+--- a/Engine/Source/Runtime/Renderer/Private/VelocityRendering.cpp
++++ b/Engine/Source/Runtime/Renderer/Private/VelocityRendering.cpp
+@@ -52,6 +52,12 @@ static TAutoConsoleVariable<int32> CVarParallelVelocity(
+ 	TEXT("Toggles parallel velocity rendering. Parallel rendering must be enabled for this to have an effect."),
+ 	ECVF_RenderThreadSafe
+ 	);
++static TAutoConsoleVariable<int32> CVarAlwaysRenderVelocity(
++	TEXT("r.AlwaysRenderVelocity"),
++	1,
++	TEXT("Force to use velocity\n"),
++	ECVF_ReadOnly | ECVF_RenderThreadSafe);
++
+ 
+ static TAutoConsoleVariable<int32> CVarRHICmdFlushRenderThreadTasksVelocityPass(
+ 	TEXT("r.RHICmdFlushRenderThreadTasksVelocityPass"),
+@@ -173,6 +179,11 @@ DECLARE_CYCLE_STAT(TEXT("Velocity"), STAT_CLP_Velocity, STATGROUP_ParallelComman
+ 
+ bool FDeferredShadingSceneRenderer::ShouldRenderVelocities() const
+ {
++	if (CVarAlwaysRenderVelocity.GetValueOnAnyThread() != 0)
++	{
++		return true;
++	}
++
+ 	if (!FVelocityRendering::IsVelocityPassSupported(ShaderPlatform) || ViewFamily.UseDebugViewPS())
+ 	{
+ 		return false;
+@@ -214,6 +225,11 @@ bool FDeferredShadingSceneRenderer::ShouldRenderVelocities() const
+ 
+ bool FMobileSceneRenderer::ShouldRenderVelocities() const
+ {
++	if (CVarAlwaysRenderVelocity.GetValueOnAnyThread() != 0)
++	{
++		return true;
++	}
++
+ 	if (!FVelocityRendering::IsVelocityPassSupported(ShaderPlatform) || ViewFamily.UseDebugViewPS() || !PlatformSupportsVelocityRendering(ShaderPlatform))
+ 	{
+ 		return false;
+diff --git a/Engine/Source/Runtime/SlateCore/Public/Rendering/SlateRenderer.h b/Engine/Source/Runtime/SlateCore/Public/Rendering/SlateRenderer.h
+index 3a515edea103..438dff926497 100644
+--- a/Engine/Source/Runtime/SlateCore/Public/Rendering/SlateRenderer.h
++++ b/Engine/Source/Runtime/SlateCore/Public/Rendering/SlateRenderer.h
+@@ -9,6 +9,7 @@
+ #include "Templates/RefCounting.h"
+ #include "Fonts/FontTypes.h"
+ #include "PixelFormat.h"
++#include <functional>
+ 
+ class FRHITexture2D;
+ class FRenderTarget;
+@@ -237,6 +238,11 @@ public:
+ 	DECLARE_MULTICAST_DELEGATE_TwoParams( FOnSlateWindowRendered, SWindow&, void* );
+ 	FOnSlateWindowRendered& OnSlateWindowRendered() { return SlateWindowRendered; }
+ 
++	/** Callback that fires before the UI is drawn */
++	using DrawUiOnBackbufferFx = std::function<void()>;
++	DECLARE_MULTICAST_DELEGATE_SevenParams(FOnDrawUI, DrawUiOnBackbufferFx, FRHICommandListImmediate&, FTexture2DRHIRef&, FTexture2DRHIRef&, struct FViewportInfo&, bool, bool);
++	FOnDrawUI& OnDrawUI() { return DrawUI; }
++
+ 	/**
+ 	 * Called on the game thread right before the slate window handle is destroyed.  
+ 	 * This gives users a chance to release any viewport specific resources they may have active when the window is destroyed 
+@@ -540,6 +546,7 @@ protected:
+ 
+ 	/** Callback that fires after Slate has rendered each window, each frame */
+ 	FOnSlateWindowRendered SlateWindowRendered;
++	FOnDrawUI DrawUI;
+ 
+ 	FOnSlateWindowDestroyed OnSlateWindowDestroyedDelegate;
+ 	FOnPreResizeWindowBackbuffer PreResizeBackBufferDelegate;
+diff --git a/Engine/Source/Runtime/SlateRHIRenderer/Private/SlateRHIRenderer.cpp b/Engine/Source/Runtime/SlateRHIRenderer/Private/SlateRHIRenderer.cpp
+index 2f76e2c96dfc..7c213e9dfe85 100644
+--- a/Engine/Source/Runtime/SlateRHIRenderer/Private/SlateRHIRenderer.cpp
++++ b/Engine/Source/Runtime/SlateRHIRenderer/Private/SlateRHIRenderer.cpp
+@@ -843,78 +843,85 @@ void FSlateRHIRenderer::DrawWindow_RenderThread(FRHICommandListImmediate& RHICmd
+ 			RHICmdList.SetViewport(0, 0, 0, ViewportWidth, ViewportHeight, 0.0f);
+ 
+ 			{
+-				FRHIRenderPassInfo RPInfo(BackBuffer, ERenderTargetActions::Load_Store);
+-
+-				if (bClear)
+-				{
+-					RPInfo.ColorRenderTargets[0].Action = ERenderTargetActions::Clear_Store;
+-				}
+-
+-				if (ViewportInfo.bRequiresStencilTest)
++				auto DrawUIOnBackBuffer = [&]()
+ 				{
+-					check(IsValidRef(ViewportInfo.DepthStencil));
++					FRHIRenderPassInfo RPInfo(BackBuffer, ERenderTargetActions::Load_Store);
+ 
+-					ERenderTargetActions StencilAction = IsMemorylessTexture(ViewportInfo.DepthStencil) ? ERenderTargetActions::DontLoad_DontStore : ERenderTargetActions::DontLoad_Store;
+-					RPInfo.DepthStencilRenderTarget.Action = MakeDepthStencilTargetActions(ERenderTargetActions::DontLoad_DontStore, StencilAction);
+-					RPInfo.DepthStencilRenderTarget.DepthStencilTarget = ViewportInfo.DepthStencil;
+-					RPInfo.DepthStencilRenderTarget.ExclusiveDepthStencil = FExclusiveDepthStencil::DepthNop_StencilWrite;
+-				}
++					if (bClear)
++					{
++						RPInfo.ColorRenderTargets[0].Action = ERenderTargetActions::Clear_Store;
++					}
+ 
+-	#if WITH_SLATE_VISUALIZERS
+-				if (CVarShowSlateBatching.GetValueOnRenderThread() != 0 || CVarShowSlateOverdraw.GetValueOnRenderThread() != 0)
+-				{
+-					RPInfo.ColorRenderTargets[0].Action = ERenderTargetActions::Clear_Store;
+ 					if (ViewportInfo.bRequiresStencilTest)
+ 					{
+-						// Reset the backbuffer as our color render target and also set a depth stencil buffer
+-						ERenderTargetActions StencilAction = IsMemorylessTexture(ViewportInfo.DepthStencil) ? ERenderTargetActions::Clear_DontStore : ERenderTargetActions::Clear_Store;
+-						RPInfo.DepthStencilRenderTarget.Action = MakeDepthStencilTargetActions(ERenderTargetActions::Load_Store, StencilAction);
++						check(IsValidRef(ViewportInfo.DepthStencil));
++
++						ERenderTargetActions StencilAction = IsMemorylessTexture(ViewportInfo.DepthStencil) ? ERenderTargetActions::DontLoad_DontStore : ERenderTargetActions::DontLoad_Store;
++						RPInfo.DepthStencilRenderTarget.Action = MakeDepthStencilTargetActions(ERenderTargetActions::DontLoad_DontStore, StencilAction);
+ 						RPInfo.DepthStencilRenderTarget.DepthStencilTarget = ViewportInfo.DepthStencil;
+-						RPInfo.DepthStencilRenderTarget.ExclusiveDepthStencil = FExclusiveDepthStencil::DepthWrite_StencilWrite;
++						RPInfo.DepthStencilRenderTarget.ExclusiveDepthStencil = FExclusiveDepthStencil::DepthNop_StencilWrite;
++					}
++
++	#if WITH_SLATE_VISUALIZERS
++					if (CVarShowSlateBatching.GetValueOnRenderThread() != 0 || CVarShowSlateOverdraw.GetValueOnRenderThread() != 0)
++					{
++						RPInfo.ColorRenderTargets[0].Action = ERenderTargetActions::Clear_Store;
++						if (ViewportInfo.bRequiresStencilTest)
++						{
++							// Reset the backbuffer as our color render target and also set a depth stencil buffer
++							ERenderTargetActions StencilAction = IsMemorylessTexture(ViewportInfo.DepthStencil) ? ERenderTargetActions::Clear_DontStore : ERenderTargetActions::Clear_Store;
++							RPInfo.DepthStencilRenderTarget.Action = MakeDepthStencilTargetActions(ERenderTargetActions::Load_Store, StencilAction);
++							RPInfo.DepthStencilRenderTarget.DepthStencilTarget = ViewportInfo.DepthStencil;
++							RPInfo.DepthStencilRenderTarget.ExclusiveDepthStencil = FExclusiveDepthStencil::DepthWrite_StencilWrite;
++						}
+ 					}
+-				}
+ 	#endif
+-				{
+-					bool bHasBatches = BatchData.GetRenderBatches().Num() > 0;
+-					if (bHasBatches || bClear)
+ 					{
+-						TransitionRenderPassTargets(RHICmdList, RPInfo);
+-						RHICmdList.BeginRenderPass(RPInfo, TEXT("SlateBatches"));
+-						SCOPE_CYCLE_COUNTER(STAT_SlateRTDrawBatches);
++						bool bHasBatches = BatchData.GetRenderBatches().Num() > 0;
+ 
+-						if (bHasBatches)
++						if (bHasBatches || bClear)
+ 						{
+-							FSlateBackBuffer BackBufferTarget(BackBuffer, FIntPoint(ViewportWidth, ViewportHeight));
+-
+-							FSlateRenderingParams RenderParams(ViewMatrix * ViewportInfo.ProjectionMatrix, DrawCommandParams.Time);
+-							RenderParams.bWireFrame = !!SlateWireFrame;
+-							RenderParams.bIsHDR = ViewportInfo.bHDREnabled;
+-
+-							FTexture2DRHIRef EmptyTarget;
+-
+-							RenderingPolicy->DrawElements
+-							(
+-								RHICmdList,
+-								BackBufferTarget,
+-								BackBuffer,
+-								PostProcessBuffer,
+-								ViewportInfo.bRequiresStencilTest ? ViewportInfo.DepthStencil : EmptyTarget,
+-								BatchData.GetFirstRenderBatchIndex(),
+-								BatchData.GetRenderBatches(),
+-								RenderParams
+-							);
++							TransitionRenderPassTargets(RHICmdList, RPInfo);
++							RHICmdList.BeginRenderPass(RPInfo, TEXT("SlateBatches"));
++							SCOPE_CYCLE_COUNTER(STAT_SlateRTDrawBatches);
++
++							if (bHasBatches)
++							{
++								FSlateBackBuffer BackBufferTarget(BackBuffer, FIntPoint(ViewportWidth, ViewportHeight));
++
++								FSlateRenderingParams RenderParams(ViewMatrix * ViewportInfo.ProjectionMatrix, DrawCommandParams.Time);
++								RenderParams.bWireFrame = !!SlateWireFrame;
++								RenderParams.bIsHDR = ViewportInfo.bHDREnabled;
++
++								FTexture2DRHIRef EmptyTarget;
++
++								RenderingPolicy->DrawElements
++								(
++									RHICmdList,
++									BackBufferTarget,
++									BackBuffer,
++									PostProcessBuffer,
++									ViewportInfo.bRequiresStencilTest ? ViewportInfo.DepthStencil : EmptyTarget,
++									BatchData.GetFirstRenderBatchIndex(),
++									BatchData.GetRenderBatches(),
++									RenderParams
++								);
++							}
+ 						}
+ 					}
+-				}
+ 
+-				// @todo Could really use a refactor.
+-				// Kind of gross but we don't want to restart renderpasses for no reason.
+-				// If the color deficiency shaders are active within DrawElements there will not be a renderpass here.
+-				// In the general case there will be a RenderPass active at this point.
+-				if (RHICmdList.IsInsideRenderPass())
+-				{
+-					RHICmdList.EndRenderPass();
+-				}
++					// @todo Could really use a refactor.
++					// Kind of gross but we don't want to restart renderpasses for no reason.
++					// If the color deficiency shaders are active within DrawElements there will not be a renderpass here.
++					// In the general case there will be a RenderPass active at this point.
++					if (RHICmdList.IsInsideRenderPass())
++					{
++						RHICmdList.EndRenderPass();
++					}
++				};
++
++				OnDrawUI().Broadcast(DrawUIOnBackBuffer, RHICmdList, BackBuffer, PostProcessBuffer, ViewportInfo, bRenderedStereo, DrawCommandParams.bLockToVsync);
++				DrawUIOnBackBuffer();
+ 			}
+ 
+ 			if (bCompositeUI)
+diff --git a/Engine/Source/Runtime/VulkanRHI/Private/VulkanViewport.h b/Engine/Source/Runtime/VulkanRHI/Private/VulkanViewport.h
+index 3528d3d92442..055dbde920eb 100644
+--- a/Engine/Source/Runtime/VulkanRHI/Private/VulkanViewport.h
++++ b/Engine/Source/Runtime/VulkanRHI/Private/VulkanViewport.h
+@@ -44,7 +44,7 @@ private:
+ class FVulkanViewport : public FRHIViewport, public VulkanRHI::FDeviceChild
+ {
+ public:
+-	enum { NUM_BUFFERS = 3 };
++	enum { NUM_BUFFERS = 6 };
+ 
+ 	FVulkanViewport(FVulkanDynamicRHI* InRHI, FVulkanDevice* InDevice, void* InWindowHandle, uint32 InSizeX,uint32 InSizeY,bool bInIsFullscreen, EPixelFormat InPreferredPixelFormat);
+ 	~FVulkanViewport();

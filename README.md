@@ -1,131 +1,83 @@
-<!-- omit in toc -->
-# Snapdragon™ Game Plugins for Unreal Engine
+# Adreno Neural Fusion Unreal Engine plugin
 
-<!-- omit in toc -->
-### Table of contents
+Adreno Neural Fusion provides Super Resolution and Frame Generation for Android Vulkan games. Super Resolution reconstructs an image from a lower-resolution render. Frame Generation produces an additional scene frame for presentation.
 
-- [Introduction](#introduction)
-- [Usage Instructions](#usage-instructions)
-- [List of Plugins](#list-of-plugins)
-	- [Snapdragon™ Game Super Resolution](#snapdragon-game-super-resolution)
-		- [Snapdragon™ Game Super Resolution 2](#snapdragon-game-super-resolution-2)
-		- [Snapdragon™ Game Super Resolution 1](#snapdragon-game-super-resolution-1)
-	- [Qualcomm™ NPE Plugin](#qualcomm-npe-plugin)
-	- [Qualcomm™ Shadow Denoiser](#qualcomm-shadow-denoiser)
-	- [Snapdragon™ Game AI SDK](#snapdragon-game-ai-sdk)
-		- [Speech Recognizer](#speech-recognizer)
-		- [LLM Pipelines](#llm-pipelines)
-		- [Text to Speech](#text-to-speech)
-- [License](#license)
+![Adreno Neural Fusion scene](media/hero.png)
 
-# Introduction
+## Resources
 
-This repository is a collection of plugins for the Unreal Engine, developed and authored by the Snapdragon™ Studios team.
+| Resource | Use |
+|---|---|
+| [Native SDK integration](ANF/Source/ANFSDK/Public/README.md) | SDK API and rendering contract |
+| [Debug overlay](ANF/Source/ANFSDK/Public/ANF_Debug_Overlay_User_Guide_External.md) | Inspect SR inputs and temporal artifacts |
+| [ANF SDK](https://github.com/SnapdragonGameStudios/adreno-neural-fusion) | Device requirements and native package |
 
-This component is part of the [Snapdragon™ Game Toolkit](https://www.qualcomm.com/developer/snapdragon-game-toolkit).
+## Requirements
 
-# Usage Instructions
+This branch contains integration patches for UE 5.0 through 5.8. Use the patches matching the engine source version.
 
-Unreal Engine contains multiple major versions, some released a few years ago but still used by many developers and game studios. Because of this, our repository is structured to provide plugins on a similar way:
+ANF runtime techniques require an Android device with Snapdragon™ 8 Elite Gen 6 or higher, `arm64-v8a`, and Vulkan. Broader platform support is planned.
 
-- Select your major engine version in one of the branches in this repository
-- Plugins are always contained in the "Plugins" directory
-- Follow any extra instructions contained at the plugin of your choice
+The plugin currently supports 2x scaling in each dimension for SR. Mobile Deferred rendering is the recommended SR path. Frame Generation cannot run alongside SR or another upscaler in this plugin. These restrictions describe the Unreal integration, not every native SDK use case.
 
-Note: The plugins are normally just drag and drop, and usually they can all be used as both an engine and project plugins, exceptions and extra instructions will be listed on the plugin readme, inside its own folder, if any.
+## Install and enable
 
-# List of Plugins
+1. Copy `ANF/` into the project's `Plugins/` directory or `Engine/Plugins/Runtime/Qualcomm/`.
+2. From a compatible Unreal Engine source tree, use `git apply --check <patch-path>` and then `git apply <patch-path>` for each patch from the matching `UE-Patches/UE5.<version>.x/` directory, in numerical order. These are plain diffs.
+3. Regenerate project files and build the engine or project.
+4. Enable ANF in the Editor's Plugins window.
+5. Build and test the Android Vulkan application on a supported device.
 
-## Snapdragon™ Game Super Resolution
+Configure temporal upscaling in `DefaultEngine.ini`:
 
-*Available Engine Versions:*
+```ini
+[/Script/Engine.RendererSettings]
+r.TemporalAA.Upsampling=True
+r.Mobile.AntiAliasing=2
+r.AntiAliasingMethod=2
+r.TemporalAASamples=4
+r.Mobile.SupportsGen4TAA=True
+r.Vulkan.Depth24Bit=1
+```
 
-#### UE4:
-| [4.27 SGSR1](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/4.27/Plugins/SGSR) | [4.27 SGSR2](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/4.27/Plugins/SGSR2) |
-|------|------|
+Enable SR with `r.ANF.Enabled=1`. To use FG, disable SR and other upscalers, then set `r.ANF.FrameGen.Enable=1`.
 
-#### UE5 SGSR1 & SGSR2:
- |[5.0][SGSR_UE5_Link] | [5.1][SGSR_UE5_Link] | [5.2][SGSR_UE5_Link] | [5.3][SGSR_UE5_Link] | [5.4][SGSR_UE5_Link] | [5.5][SGSR_UE5_Link] | [5.6][SGSR_UE5_Link] | [5.7][SGSR_UE5_Link] | [5.8][SGSR_UE5_Link] |
-|-----|-----|-----|-----|-----|-----|-----|-----|-----|
+## Frame pacing
 
-[SGSR_UE5_Link]: https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/SGSR_UE5
+Choose one pacing path and measure its output on the target device. The rendered frame rate and displayed frame rate are different when FG is active.
 
-### Snapdragon™ Game Super Resolution 2
+### SwappyVK
 
-<img src="media/sgsr2_hero_image.png" width="720px" >
-<br>
+For a light workload, enable SwappyVK. Set `t.MaxFPS` to the rendered frame rate and `r.SetFramePace` to the display rate. For 30 rendered frames and 60 displayed frames per second:
 
-Snapdragon™ Game Super Resolution 2 (Snapdragon™ GSR 2 or just SGSR 2) was developed by Qualcomm Snapdragon™ Game Studios; it's our temporal upscaling solution optimized for Adreno GPUs.
+```text
+t.MaxFPS 30
+r.SetFramePace 60
+```
 
-Snapdragon™ GSR 2 strikes a better balance between performance and visual quality on mobile devices than other temporal upscaling methods. Its main goal is to improve the quality of the final image by reducing aliasing, flicker, and ghosting while increasing image resolution.
+### ANF CPU frame pacer
 
-By comparison, TAAU is a simple and fast upscaling version of TAA. It tends to do a good job of reducing aliasing in moving images but also amplifies TAA's shortcomings, such as ghosting. Other alternatives have been developed to produce better perceptual visual quality than TAAU, but these are notoriously slow on mobile GPUs, often introducing compute shader bottlenecks and consuming a lot of power.
+For a heavier workload, disable competing pacers and enable ANF's pacer:
 
-Snapdragon™ GSR 2 is an improvement on all fronts, ensuring applications retain their visual fidelity while being easy on power consumption.
+```ini
+[ConsoleVariables]
+a.UseSwappyForFramePacing=0
+r.Vulkan.ExtensionFramePacer=0
+r.Vulkan.CPURenderthreadFramePacer=0
+r.Vulkan.CPURHIThreadFramePacer=0
+r.ANF.FrameGen.UseFramePacer=1
+r.ANF.FrameGen.FramePacerTargetFPS=60
+t.MaxFPS=60
+```
 
-<img src="media/sgsr2_dragon_mosaic_text.png" width="720px" >
-<br>
-<br>
+Set `r.SetFramePace 60` for this 60 FPS display target. The ANF target controls presentation timing. Validate frame delivery and latency before selecting a shipping configuration.
 
-For more information about the upscaler (and standalone shaders), please take a look at our [Snapdragon Game Super Resolution](https://github.com/SnapdragonGameStudios/snapdragon-gsr) repository.
-### Snapdragon™ Game Super Resolution 1
-Snapdragon™ Game Studios developed Snapdragon™ Game Super Resolution 1 (Snapdragon™ GSR 1 or SGSR1), which integrates upscaling and sharpening in one single GPU shader pass. The algorithm uses a 12-tap Lanczos-like scaling filter and adaptive sharpening filter, which presents smooth images and sharp edges.
+## Validate the integration
 
-Our solution provides an efficient solution for games to draw 2D UI at device resolution for better visual quality, while rendering the 3D scene at a lower resolution for performance and power savings.
+Check SR and FG separately. Verify that unsupported devices retain a working fallback, UI composition remains correct, and mode changes do not leave stale history. Inspect GPU and frame timing on the target device.
 
-<img src="media/snapdragon_gsr_video.gif" width="500" height="500" />
+For SR diagnosis, use the [debug overlay guide](ANF/Source/ANFSDK/Public/ANF_Debug_Overlay_User_Guide_External.md). The plugin exposes `r.ANF.DebugOverlay.*` controls. Disable the overlay for production.
 
-The technique has visual quality on par with other spatial upscaling techniques while being highly optimized for Adreno™ GPU hardware.
+## License
 
-For more information about the upscaler (and standalone shaders), please take a look at our [Snapdragon Game Super Resolution](https://github.com/SnapdragonGameStudios/snapdragon-gsr) repository.
-
-## Qualcomm™ NPE Plugin 
-
-*Available Engine Versions:*
-| [5.3](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.3/Plugins/SNPE) | [5.4](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.4/Plugins/SNPE) |
-|------|------|
-
-Plugin for Neural Network Inference using the Qualcomm™ Neural Processing SDK (also known as SNPE).
-
-This plugin enables hardware acceleration of AI model inference on devices with Qualcomm® Hexagon™ Processors.
-
-## Qualcomm™ Shadow Denoiser 
-
-*Available Engine Versions:*
-| [5.5](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.5/Plugins/QcomShadowDenoiser) |
-|------|
-
-Plugin for reducing noise in ray-traced shadows on both desktop and mobile renderers, with optimizations for Qualcomm® Adreno™ GPUs.
-
-## Snapdragon™ Game AI SDK
-*Available Engine Versions:*
-| [5.6](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.6/Plugins/SGAI) |
-|------|
-
-Snapdragon™ Game AI SDK provides a comprehensive suite of on-device AI features optimized for real-time game scenarios. 
-
-![Snapdragon™ Game AI](media/sgai.png)
-
-### Speech Recognizer
-| [5.6](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.6/Plugins/SGAI/SGAISpeechRecognizer) |
-|------|
-
-Transform player voice input into text with real-time speech recognition.
-- Real-time voice-to-text conversion
-- NPU accelerated inference using Qualcomm's Voice AI SDK
-### LLM Pipelines
-| [5.6](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.6/Plugins/SGAI/SGAILLMPipelines) |
-|------|
-
-Integrate large language models into your game for dynamic, context-aware AI interactions.
-- Seamless LLM integration in Unreal Engine
-- NPU accelerated LLM inference using Qualcomm's GenIE SDK.
-### Text to Speech
-| [5.6](https://github.com/SnapdragonGameStudios/snapdragon-game-plugins-for-unreal-engine/tree/engine/5.6/Plugins/SGAI/SGAITextToSpeech) |
-|------|
-
-Bring your game characters to life with natural-sounding, AI-generated speech.
-- Real-time audio generation
-- NPU accelerated inference using Qualcomm's Voice AI SDK
-# License
-Check out the [LICENSE](LICENSE) for more details.
+The plugin source and public SDK headers use [BSD 3-Clause](ANF/LICENSE-BSD-3-Clause.txt). The bundled `libanf.so` uses the [QTI No-Login Binary License](ANF/Source/ANFSDK/libs/LICENSE.txt). Include that license and required notices when redistributing the binary.

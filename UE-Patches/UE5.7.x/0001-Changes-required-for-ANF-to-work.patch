@@ -1,0 +1,142 @@
+diff --git a/Engine/Source/Runtime/Renderer/Private/SceneVisibility.cpp b/Engine/Source/Runtime/Renderer/Private/SceneVisibility.cpp
+index ab586f42224d..a577bfab082b 100644
+--- a/Engine/Source/Runtime/Renderer/Private/SceneVisibility.cpp
++++ b/Engine/Source/Runtime/Renderer/Private/SceneVisibility.cpp
+@@ -5402,7 +5402,42 @@ void FSceneRenderer::PrepareViewStateForVisibility(const FSceneTexturesConfig& S
+ 			View.TemporalJitterPixels.X = SampleX;
+ 			View.TemporalJitterPixels.Y = SampleY;
+ 
+-			View.ViewMatrices.HackAddTemporalAAProjectionJitter(FVector2D(SampleX * 2.0f / View.ViewRect.Width(), SampleY * -2.0f / View.ViewRect.Height()));
++			static auto CANFVar = IConsoleManager::Get().FindConsoleVariable(TEXT("r.ANF.Enabled"));
++			const bool anfEnabled = CANFVar != nullptr && CANFVar->GetInt() != 0;
++			static auto CANFPatternCVar = IConsoleManager::Get().FindConsoleVariable(TEXT("r.ANF.UseJitterPattern"));
++			const bool anfusePattern = CANFPatternCVar != nullptr && CANFPatternCVar->GetInt() != 0;
++
++			if (anfEnabled && anfusePattern)
++			{ 
++				auto ANFHalton = [](int32 Index, int32 Base)
++					{
++						Index = (Index + 1) % 16 + 1;
++						float Result = 0.0f;
++						float InvBase = 1.0f / float(Base);
++						float Fraction = InvBase;
++						while (Index > 0)
++						{
++							Result += float(Index % Base) * Fraction;
++							Index /= Base;
++							Fraction *= InvBase;
++						}
++						return Result;
++					};
++
++				int32_t sampleIndex = View.TemporalJitterIndex;
++
++				SampleX = ANFHalton(sampleIndex + 1, 2) - 0.5f;
++				SampleY = ANFHalton(sampleIndex + 1, 3) - 0.5f;
++
++				View.TemporalJitterPixels.X = SampleX;
++				View.TemporalJitterPixels.Y = SampleY;
++
++				View.ViewMatrices.HackAddTemporalAAProjectionJitter(FVector2D(SampleX * -2.0f / View.ViewRect.Width(), SampleY * -2.0f / View.ViewRect.Height()));
++			}
++			else
++			{
++				View.ViewMatrices.HackAddTemporalAAProjectionJitter(FVector2D(SampleX * 2.0f / View.ViewRect.Width(), SampleY * -2.0f / View.ViewRect.Height()));
++			}
+ 		}
+ 
+ 		// Setup a new FPreviousViewInfo from current frame infos.
+diff --git a/Engine/Source/Runtime/VulkanRHI/Private/VulkanContext.h b/Engine/Source/Runtime/VulkanRHI/Private/VulkanContext.h
+index ffc02a23ac5f..2f3f90047490 100644
+--- a/Engine/Source/Runtime/VulkanRHI/Private/VulkanContext.h
++++ b/Engine/Source/Runtime/VulkanRHI/Private/VulkanContext.h
+@@ -51,7 +51,7 @@ struct FVulkanParallelRenderPassInfo
+ };
+ 
+ 
+-class FVulkanContextCommon
++class VULKANRHI_API FVulkanContextCommon
+ {
+ protected:
+ 	// Phases are used to track where we are at in filling the current payload.
+diff --git a/Engine/Source/Runtime/VulkanRHI/Private/VulkanSwapChain.cpp b/Engine/Source/Runtime/VulkanRHI/Private/VulkanSwapChain.cpp
+index f248a38aa51e..7d6528ccf37d 100644
+--- a/Engine/Source/Runtime/VulkanRHI/Private/VulkanSwapChain.cpp
++++ b/Engine/Source/Runtime/VulkanRHI/Private/VulkanSwapChain.cpp
+@@ -17,6 +17,9 @@
+ #include "Misc/CommandLine.h"
+ #include "RHIUtilities.h"
+ 
++ETextureCreateFlags FVulkanSwapChain::sExtraBackbufferUsageFlags = ETextureCreateFlags::None;
++VkImageUsageFlags FVulkanSwapChain::sExtraBackbufferVkUsageFlags = 0x0;
++
+ #if PLATFORM_ANDROID
+ // this path crashes within libvulkan during vkDestroySwapchainKHR on some versions of Android. See FORT-250079
+ int32 GVulkanKeepSwapChain = 0;
+@@ -534,6 +537,10 @@ FVulkanSwapChain* FVulkanSwapChain::Create(
+ 	SwapChainInfo.imageExtent.width = SizeX;
+ 	SwapChainInfo.imageExtent.height = SizeY;
+ 	SwapChainInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
++	if (GVulkanDelayAcquireImage != EDelayAcquireImageType::DelayAcquire) // App will have direct swapchain image access
++	{
++		SwapChainInfo.imageUsage |= sExtraBackbufferVkUsageFlags;
++	}
+ 	SwapChainInfo.preTransform = PreTransform;
+ 	SwapChainInfo.imageArrayLayers = 1;
+ 	SwapChainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+diff --git a/Engine/Source/Runtime/VulkanRHI/Private/VulkanSwapChain.h b/Engine/Source/Runtime/VulkanRHI/Private/VulkanSwapChain.h
+index bbdcc2ab9808..3006bd54c002 100644
+--- a/Engine/Source/Runtime/VulkanRHI/Private/VulkanSwapChain.h
++++ b/Engine/Source/Runtime/VulkanRHI/Private/VulkanSwapChain.h
+@@ -55,6 +55,17 @@ public:
+ 
+ 	inline VkSurfaceTransformFlagBitsKHR GetCachedSurfaceTransform() const { return PreTransform; }
+ 
++	VULKANRHI_API static inline void SetExtraBackbufferUsageFlags(ETextureCreateFlags extraFlags, VkImageUsageFlags extraVkFlags)
++	{
++		sExtraBackbufferUsageFlags |= extraFlags;
++		sExtraBackbufferVkUsageFlags |= extraVkFlags;
++	}
++
++	VULKANRHI_API static inline ETextureCreateFlags GetExtraBackbufferUsageFlags()
++	{
++		return sExtraBackbufferUsageFlags;
++	}
++
+ protected:
+ 	const VkInstance Instance;
+ 	FVulkanDevice& Device;
+@@ -89,6 +100,9 @@ protected:
+ 
+ 	uint32 PresentID = 0;
+ 
++	static ETextureCreateFlags sExtraBackbufferUsageFlags;
++	static VkImageUsageFlags sExtraBackbufferVkUsageFlags;
++
+ 	int32 AcquireImageIndex(FVulkanSemaphore** OutSemaphore);
+ 
+ 
+diff --git a/Engine/Source/Runtime/VulkanRHI/Private/VulkanViewport.cpp b/Engine/Source/Runtime/VulkanRHI/Private/VulkanViewport.cpp
+index dcf26373869c..0df60215e8d6 100644
+--- a/Engine/Source/Runtime/VulkanRHI/Private/VulkanViewport.cpp
++++ b/Engine/Source/Runtime/VulkanRHI/Private/VulkanViewport.cpp
+@@ -497,12 +497,18 @@ void FVulkanViewport::CreateSwapchain(FVulkanCommandListContext& Context, FVulka
+ 
+ 		const UE::StereoRenderUtils::FStereoShaderAspects Aspects(GMaxRHIShaderPlatform);
+ 
++		ETextureCreateFlags backbufferFlags = ETextureCreateFlags::RenderTargetable | ETextureCreateFlags::ShaderResource | ETextureCreateFlags::ResolveTargetable;
++		if (GVulkanDelayAcquireImage == EDelayAcquireImageType::DelayAcquire)
++		{
++			backbufferFlags |= FVulkanSwapChain::GetExtraBackbufferUsageFlags();
++		}
++
+ 		const int kMultiViewCount = 2; // TODO: number of subresources may change in the future
+ 		const FRHITextureCreateDesc CreateDesc = (Aspects.IsMobileMultiViewEnabled() ?			
+ 			FRHITextureCreateDesc::Create2DArray(TEXT("RenderingBackBufferArr"), BackBufferSizeX, BackBufferSizeY, kMultiViewCount, PixelFormat) :
+ 			FRHITextureCreateDesc::Create2D(TEXT("RenderingBackBuffer"), BackBufferSizeX, BackBufferSizeY, PixelFormat))
+ 			.SetClearValue(FClearValueBinding::None)
+-			.SetFlags(ETextureCreateFlags::RenderTargetable | ETextureCreateFlags::ShaderResource | ETextureCreateFlags::ResolveTargetable)
++			.SetFlags(backbufferFlags)
+ 			.SetInitialState(ERHIAccess::Present);
+ 
+ 

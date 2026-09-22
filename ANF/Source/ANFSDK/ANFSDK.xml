@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--DSP Functions Additions-->
+<root xmlns:android="http://schemas.android.com/apk/res/android">
+    
+    <!-- init section is evaluated once per architecture-->
+    <init>
+        <!-- Don't know how to check for two architectures. Not sure we should support armeabi-v7a -->
+        <setBool result="IsSupported" value="false"/>
+        <isArch arch="armeabi-v7a">
+            <setBool result="IsSupported" value="false"/>
+        </isArch>
+        <isArch arch="arm64-v8a">
+            <setBool result="IsSupported" value="true"/>
+        </isArch>
+        <if condition="IsSupported">
+            <true>
+                <log text="ANF is only support for ARM64 at the moment"/>
+            </true>
+            <false>
+                <log text="ERROR: ANF is only support for ARM64 at the moment"/>
+            </false>
+        </if>
+    </init>
+    
+    <!-- This is where changes to the Androi manifest would be put -->
+    <androidManifestUpdates>
+		<addPermission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+		<addPermission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+		<addPermission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+		<uses-permission android:name="android.permission.INTERNET"/>
+		<addAttribute tag="activity" name="android:exported" value="true"/>
+		<addElements tag="application">
+			<uses-native-library android:name="libOpenCL.so" android:required="false" />
+		</addElements>
+		<addElements tag="application">
+            <meta-data android:name="com.android.graphics.developerdriver.enable" android:value="true" />
+        </addElements>
+    </androidManifestUpdates>
+    
+    <!-- This is where libraries, files (copyFile), directories (copyDir), etc. would be copied to Intermediate/Android.APK-->
+    <resourceCopies>
+        <isArch arch="arm64-v8a">
+            <log text="Copying arm64-v8a ANF libraries..."/>
+            <copyFile src="$S(PluginDir)/libs/arm64-v8a/libanf.so" dst="$S(BuildDir)/libs/arm64-v8a/libanf.so"/>
+        </isArch>
+    </resourceCopies>
+
+	<!-- optional libraries to load before libUnreal.so -->
+	<soLoadLibrary>
+		<loadLibrary name="anf" failmsg="libanf library not loaded." />
+	</soLoadLibrary>
+</root>

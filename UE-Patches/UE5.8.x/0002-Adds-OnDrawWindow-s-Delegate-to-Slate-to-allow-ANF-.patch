@@ -1,0 +1,108 @@
+diff --git a/Engine/Source/Runtime/Renderer/Private/VelocityRendering.cpp b/Engine/Source/Runtime/Renderer/Private/VelocityRendering.cpp
+index 3eb95f47ed92..b21ca3e63a9a 100644
+--- a/Engine/Source/Runtime/Renderer/Private/VelocityRendering.cpp
++++ b/Engine/Source/Runtime/Renderer/Private/VelocityRendering.cpp
+@@ -55,6 +55,12 @@ static TAutoConsoleVariable<int32> CVarParallelVelocity(
+ 	ECVF_RenderThreadSafe
+ 	);
+ 
++static TAutoConsoleVariable<int32> CVarAlwaysRenderVelocity(
++	TEXT("r.AlwaysRenderVelocity"),
++	1,
++	TEXT("Force to use velocity\n"),
++	ECVF_ReadOnly | ECVF_RenderThreadSafe);
++
+ static TAutoConsoleVariable<int32> CVarVelocityOutputTranslucentClippedDepthSupported(
+ 	TEXT("r.Velocity.OutputTranslucentClippedDepth.Supported"),
+ 	0,
+@@ -348,6 +354,11 @@ static const TCHAR* GetVelocityPassName(EVelocityPass VelocityPass)
+ 
+ bool FDeferredShadingSceneRenderer::ShouldRenderVelocities() const
+ {
++	if (CVarAlwaysRenderVelocity.GetValueOnAnyThread() != 0)
++	{
++		return true;
++	}
++
+ 	if (!FVelocityRendering::IsVelocityPassSupported(ShaderPlatform) || ViewFamily.UseDebugViewPS())
+ 	{
+ 		return false;
+@@ -392,6 +403,11 @@ bool FDeferredShadingSceneRenderer::ShouldRenderVelocities() const
+ 
+ bool FMobileSceneRenderer::ShouldRenderVelocities() const
+ {
++	if (CVarAlwaysRenderVelocity.GetValueOnAnyThread() != 0)
++	{
++		return true;
++	}
++	
+ 	if (!FVelocityRendering::IsVelocityPassSupported(ShaderPlatform) || ViewFamily.UseDebugViewPS() || !PlatformSupportsVelocityRendering(ShaderPlatform))
+ 	{
+ 		return false;
+diff --git a/Engine/Source/Runtime/SlateCore/Public/Rendering/SlateRenderer.h b/Engine/Source/Runtime/SlateCore/Public/Rendering/SlateRenderer.h
+index 665819b969f6..faa084f670d2 100644
+--- a/Engine/Source/Runtime/SlateCore/Public/Rendering/SlateRenderer.h
++++ b/Engine/Source/Runtime/SlateCore/Public/Rendering/SlateRenderer.h
+@@ -11,6 +11,8 @@
+ #include "Fonts/FontTypes.h"
+ #include "Types/SlateVector2.h"
+ #include "PixelFormat.h"
++#include <functional>
++#include "RHIFwd.h"
+ 
+ class FRenderTarget;
+ class FSlateDrawBuffer;
+@@ -325,6 +327,13 @@ public:
+ 	DECLARE_MULTICAST_DELEGATE_OneParam( FOnSlateWindowRendered, SWindow& );
+ 	FOnSlateWindowRendered& OnSlateWindowRendered() { return SlateWindowRendered; }
+ 
++	using FDrawWindowsRenderThread = std::function<void()>;
++	DECLARE_MULTICAST_DELEGATE_OneParam(FOnDrawWindows_RenderThread, FDrawWindowsRenderThread);
++	FOnDrawWindows_RenderThread& OnDrawWindows_RenderThread() { return DrawWindowsDelegate; }
++	
++	DECLARE_TS_MULTICAST_DELEGATE_ThreeParams(FOnDrawWindow_RenderThread, FRDGBuilder&, FRHICommandListImmediate&, FTextureRHIRef&);
++	FOnDrawWindow_RenderThread& OnDrawWindow_RenderThread() { return DrawWindowDelegate; }
++
+ 	/** Callback on the render thread after slate rendering finishes and right before present is called. */
+ 	DECLARE_TS_MULTICAST_DELEGATE_TwoParams(FOnBackBufferReadyToPresent, SWindow&, class ISlateViewportProvider& );
+ 	FOnBackBufferReadyToPresent& OnBackBufferReadyToPresent() { return OnBackBufferReadyToPresentDelegate; }
+@@ -606,6 +615,9 @@ protected:
+ 
+ 	FOnBackBufferReadyToPresent OnBackBufferReadyToPresentDelegate;
+ 
++	FOnDrawWindows_RenderThread DrawWindowsDelegate;
++	FOnDrawWindow_RenderThread DrawWindowDelegate;
++
+ 	/**
+ 	 * Necessary to grab before flushing the resource pool, as it may be being 
+ 	 * accessed by multiple threads when loading.
+diff --git a/Engine/Source/Runtime/SlateRHIRenderer/Private/SlateRHIRenderer.cpp b/Engine/Source/Runtime/SlateRHIRenderer/Private/SlateRHIRenderer.cpp
+index d594567cc3d2..73f049e2f491 100644
+--- a/Engine/Source/Runtime/SlateRHIRenderer/Private/SlateRHIRenderer.cpp
++++ b/Engine/Source/Runtime/SlateRHIRenderer/Private/SlateRHIRenderer.cpp
+@@ -1483,6 +1483,10 @@ void FSlateRHIRenderer::DrawWindows_RenderThread(FRHICommandListImmediate& RHICm
+ 			for (int32 NumWindows = 0; NumWindows < 8 && WindowIndex < Windows.Num(); ++NumWindows, ++WindowIndex)
+ 			{
+ 				const FSlateDrawWindowPassInputs& DrawWindowPassInputs = Windows[WindowIndex];
++
++				FTextureRHIRef SlateRenderTarget = RHIGetViewportBackBuffer(DrawWindowPassInputs.ViewportInfo->GetViewportRHI());
++				DrawWindowDelegate.Broadcast(GraphBuilder, RHICmdList, SlateRenderTarget);
++				
+ 				WindowPresentCommands.Emplace(DrawWindowPassInputs, DrawWindow_RenderThread(GraphBuilder, DrawWindowPassInputs));
+ 			}
+ 
+@@ -1745,7 +1749,13 @@ void FSlateRHIRenderer::DrawWindows_Private(FSlateDrawBuffer& WindowDrawBuffer)
+ 	{
+ 		ENQUEUE_RENDER_COMMAND(SlateDrawWindowsCommand)([this, DrawWindowsCommand = MoveTemp(DrawWindowsCommand)](FRHICommandListImmediate& RHICmdList)
+ 		{
+-			DrawWindows_RenderThread(RHICmdList, DrawWindowsCommand->Windows, DrawWindowsCommand->DeferredUpdates);
++				auto DrawWindows_RenderThreadFx = [&]()
++					{
++						DrawWindows_RenderThread(RHICmdList, DrawWindowsCommand->Windows, DrawWindowsCommand->DeferredUpdates);
++					};
++
++				DrawWindowsDelegate.Broadcast(DrawWindows_RenderThreadFx);
++				DrawWindows_RenderThreadFx();
+ 		});
+ 
+ 		check(DeferredUpdateContexts.IsEmpty());

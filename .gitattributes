@@ -1,0 +1,3 @@
+# Mark .so files (libanf.so) as binary
+*.so binary
+*.png binary

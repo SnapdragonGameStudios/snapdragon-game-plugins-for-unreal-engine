@@ -1,3 +1,6 @@
+// Copyright (c) Qualcomm Innovation Center, Inc. All rights reserved.
+// SPDX-License-Identifier: BSD-3-Clause
+
 #include "NativeInputStreamJava.h"
 
 extern "C" JNIEXPORT int JNICALL Java_com_sgs_gameai_NativeInputStream_nativeRead(JNIEnv *env, jclass /*clazz*/,

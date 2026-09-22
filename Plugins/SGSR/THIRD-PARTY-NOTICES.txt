@@ -1,0 +1,9 @@
+SGSR temporal shaders include code based on AMD FidelityFX Super Resolution.
+
+The source references in Source/src/3PassCS identify FSR and FSR2 algorithms used by the conversion, activation, and upscaling passes. The sharpening pass uses the FSR RCAS algorithm.
+
+Upstream sources:
+https://github.com/GPUOpen-Effects/FidelityFX-FSR
+https://github.com/GPUOpen-Effects/FidelityFX-FSR2
+
+The AMD portions are licensed under MIT. The corresponding copyright notices and license texts are preserved in Licenses/LICENSE-FidelityFX-FSR1.txt and Licenses/LICENSE-FidelityFX-FSR2.txt. Qualcomm modifications retain their existing BSD 3-Clause terms.
